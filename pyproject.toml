@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mini-antemortem-cli"
+version = "0.1.0"
+description = "Analytical preflight for omegaprompt calibration: deterministic classifier over seven calibration trap patterns (self-agreement bias, small-sample KC-4 power, variant homogeneity, rubric concentration, judge budget, empty reference, missing held-out slice). Emits AnalyticalFinding records the omegaprompt pipeline consumes via derive_adaptation_plan."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+    { name = "hibou04-ops" },
+]
+keywords = [
+    "prompt-calibration",
+    "preflight",
+    "antemortem",
+    "analytical-audit",
+    "omegaprompt",
+    "omega-lock",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "omegaprompt>=1.1.0",
+    "pydantic>=2.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/hibou04-ops/mini-antemortem-cli"
+Repository = "https://github.com/hibou04-ops/mini-antemortem-cli"
+"Parent package" = "https://github.com/hibou04-ops/omegaprompt"
+Issues = "https://github.com/hibou04-ops/mini-antemortem-cli/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mini_antemortem_cli"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/mini_antemortem_cli",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra -q"
