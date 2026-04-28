@@ -93,3 +93,5 @@ Every trap pattern has positive + negative test cases. No API calls, fully offli
 ## License
 
 Apache 2.0. See [LICENSE](LICENSE).
+
+**License history.** PyPI distributions of version 0.1.0 were shipped with an MIT `LICENSE` file. The repository was relicensed to Apache 2.0 on 2026-04-22 (commit `d2d7eb7`); 0.2.0 (2026-04-28) and all later versions ship under Apache 2.0. Anyone who installed 0.1.0 holds an MIT license to that copy — license changes do not apply retroactively.
