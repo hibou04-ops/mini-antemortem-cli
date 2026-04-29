@@ -54,6 +54,9 @@ include = [
     "src/mini_antemortem_cli",
     "README.md",
     "LICENSE",
+    "NOTICE",
+    "AUTHORS.md",
+    "PRE_EXISTING_IP.md",
     "pyproject.toml",
 ]
 
