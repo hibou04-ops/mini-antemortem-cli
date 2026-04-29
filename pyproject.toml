@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mini-antemortem-cli"
-version = "0.2.0"
+version = "0.3.0"
 description = "Analytical preflight for omegaprompt calibration: deterministic classifier over seven calibration trap patterns (self-agreement bias, small-sample KC-4 power, variant homogeneity, rubric concentration, judge budget, empty reference, missing held-out slice). Emits AnalyticalFinding records the omegaprompt pipeline consumes via derive_adaptation_plan."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -39,6 +39,10 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
 ]
+mcp = ["mcp>=1.0.0"]
+
+[project.scripts]
+mini-antemortem-cli-mcp = "mini_antemortem_cli.mcp.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/hibou04-ops/mini-antemortem-cli"
