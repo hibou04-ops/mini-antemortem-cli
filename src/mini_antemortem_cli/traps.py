@@ -24,6 +24,96 @@ from omegaprompt.preflight.contracts import (
 )
 
 
+# ----- Reviewer 4순위: canonicalization helpers -----
+
+
+def _canonical_provider(name: str | None) -> str:
+    """Lower-case, trim, normalize separators.
+
+    Without this, ``OpenAI`` vs ``openai`` and ``azure_openai`` vs
+    ``azure-openai`` would be different vendors to the self-agreement
+    check, masking bias overlap.
+    """
+    if not name:
+        return ""
+    return str(name).strip().lower().replace("_", "-")
+
+
+# Vendor families: providers that share underlying model weights or
+# training data, so a self-agreement bias check should treat them as
+# the same vendor for the purpose of "do they likely flatter each
+# other's responses?". Conservative: only families where the public
+# evidence is strong (azure-openai literally serves OpenAI models).
+_PROVIDER_FAMILY: dict[str, str] = {
+    "openai": "openai",
+    "azure-openai": "openai",
+    "azure": "openai",
+    "anthropic": "anthropic",
+    "claude": "anthropic",
+    "google": "google",
+    "gemini": "google",
+    "vertex": "google",
+    "vertex-ai": "google",
+}
+
+
+def _provider_family(name: str | None) -> str:
+    """Return the canonical family or the canonicalized name as-is."""
+    canon = _canonical_provider(name)
+    return _PROVIDER_FAMILY.get(canon, canon)
+
+
+def _canonical_budget(budget: object) -> str:
+    """Reduce any reasonable budget representation to ``small | medium | large``.
+
+    Pre-fix: ``judge_output_budget == "small"`` only matched lowercase
+    string literals. ``OutputBudgetBucket.SMALL`` (enum), ``"SMALL"``,
+    ``"OutputBudgetBucket.SMALL"`` all silently passed the check
+    because none of them equalled ``"small"``.
+    """
+    if budget is None:
+        return ""
+    raw = str(getattr(budget, "value", budget)).strip().lower()
+    # Handle ``OutputBudgetBucket.SMALL`` -> ``small``.
+    if "." in raw:
+        raw = raw.rsplit(".", 1)[-1]
+    return raw
+
+
+# Reference-implying keywords (multi-language). When a rubric dimension
+# description hits one of these, we treat the rubric as ground-truth-
+# dependent — empty references then become a real trap rather than a
+# benign self-contained rubric.
+_REFERENCE_KEYWORDS: tuple[str, ...] = (
+    "reference",
+    "ground truth",
+    "ground-truth",
+    "expected output",
+    "expected answer",
+    "correct answer",
+    "matches the",
+    "compare to",
+    "compared to",
+    "정답",
+    "기준답안",
+    "참조",
+)
+
+
+def _rubric_implies_ground_truth(rubric: JudgeRubric) -> bool:
+    """True when at least one dimension's description hints at a reference.
+
+    Used to scope the ``empty_reference_with_strict_rubric`` trap to
+    rubrics that actually depend on a reference; self-contained rubrics
+    (e.g. \"is the response polite?\") get a GHOST instead of NEW.
+    """
+    for dim in rubric.dimensions:
+        desc = (dim.description or "").lower()
+        if any(kw in desc for kw in _REFERENCE_KEYWORDS):
+            return True
+    return False
+
+
 @dataclass(frozen=True)
 class TrapPattern:
     """One reusable calibration trap pattern."""
@@ -117,7 +207,20 @@ def _check_self_agreement(
     judge_model: str | None,
 ) -> AnalyticalFinding:
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "self_agreement_bias")
-    if target_provider == judge_provider and target_model == judge_model:
+
+    # Canonicalize both names and pull them through the family map so
+    # ``Azure-OpenAI`` and ``openai`` collapse to the same vendor for
+    # bias purposes. Models compare canonically (lowercased + trimmed).
+    target_family = _provider_family(target_provider)
+    judge_family = _provider_family(judge_provider)
+    target_model_norm = (target_model or "").strip().lower() or None
+    judge_model_norm = (judge_model or "").strip().lower() or None
+
+    if (
+        target_family == judge_family
+        and target_family != ""
+        and target_model_norm == judge_model_norm
+    ):
         return _finding(
             trap,
             label="REAL",
@@ -128,12 +231,16 @@ def _check_self_agreement(
             ),
             remediation="Use a different vendor or stronger model for --judge-*.",
         )
-    if target_provider == judge_provider:
+    if target_family == judge_family and target_family != "":
         return _finding(
             trap,
             label="REAL",
             severity=PreflightSeverity.MEDIUM,
-            note=f"Target and judge share vendor ({target_provider}); some bias overlap.",
+            note=(
+                f"Target and judge share vendor family ({target_family}); "
+                "some bias overlap. Inputs were "
+                f"target={target_provider!r}, judge={judge_provider!r}."
+            ),
             remediation="Consider a cross-vendor judge to break self-agreement bias.",
         )
     return _finding(
@@ -252,12 +359,18 @@ def _check_rubric_concentration(rubric: JudgeRubric) -> AnalyticalFinding:
     )
 
 
-def _check_judge_budget(rubric: JudgeRubric, judge_output_budget: str) -> AnalyticalFinding:
+def _check_judge_budget(rubric: JudgeRubric, judge_output_budget: object) -> AnalyticalFinding:
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "judge_budget_too_small")
     n_dims = len(rubric.dimensions)
     n_gates = len([g for g in rubric.hard_gates if g.evaluator == "judge"])
     total_axes = n_dims + n_gates
-    if judge_output_budget == "small" and total_axes > 5:
+    # Accept ``"small"``, ``"SMALL"``, ``OutputBudgetBucket.SMALL``,
+    # and ``"OutputBudgetBucket.SMALL"`` — anything that resolves to
+    # ``small`` after canonicalization. Pre-fix this only matched the
+    # exact lowercase string literal and silently let enum / mixed-case
+    # callers slip through.
+    canon = _canonical_budget(judge_output_budget)
+    if canon == "small" and total_axes > 5:
         return _finding(
             trap,
             label="REAL",
@@ -272,26 +385,42 @@ def _check_judge_budget(rubric: JudgeRubric, judge_output_budget: str) -> Analyt
         trap,
         label="GHOST",
         severity=PreflightSeverity.LOW,
-        note=f"Judge budget {judge_output_budget} adequate for {total_axes} axes.",
+        note=f"Judge budget {canon or judge_output_budget!r} adequate for {total_axes} axes.",
     )
 
 
-def _check_empty_reference(dataset: Dataset) -> AnalyticalFinding:
+def _check_empty_reference(dataset: Dataset, rubric: JudgeRubric) -> AnalyticalFinding:
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "empty_reference_with_strict_rubric")
     has_ref = sum(1 for it in dataset.items if it.reference)
     total = len(dataset.items)
+    rubric_needs_reference = _rubric_implies_ground_truth(rubric)
+    # Trap only fires when the rubric's descriptions actually imply a
+    # ground-truth comparison AND the dataset has no references. A
+    # self-contained rubric (\"is the response polite?\") with no
+    # references is fine — pre-fix that case got flagged as NEW.
+    if has_ref == 0 and total > 0 and rubric_needs_reference:
+        return _finding(
+            trap,
+            label="REAL",
+            severity=PreflightSeverity.MEDIUM,
+            note=(
+                "No dataset item has a reference field, yet the rubric's dimension "
+                "descriptions imply comparison to a ground truth. Judge will score "
+                "without the anchor the rubric expects."
+            ),
+            remediation=(
+                "Add reference fields, or reword the rubric so each dimension is "
+                "self-contained (no \"compare to expected output\" language)."
+            ),
+        )
     if has_ref == 0 and total > 0:
         return _finding(
             trap,
-            label="NEW",
+            label="GHOST",
             severity=PreflightSeverity.LOW,
             note=(
-                "No dataset item has a reference field; judge scores purely by rubric "
-                "without ground-truth anchor."
-            ),
-            remediation=(
-                "If your rubric's descriptions imply comparison to a reference, add "
-                "reference fields or reword the rubric to be self-contained."
+                "No references in dataset, but rubric dimensions appear "
+                "self-contained — no ground-truth anchor required."
             ),
         )
     return _finding(
@@ -350,7 +479,7 @@ def analytical_preflight(
         _check_variants_homogeneity(variants),
         _check_rubric_concentration(rubric),
         _check_judge_budget(rubric, judge_output_budget),
-        _check_empty_reference(train_dataset),
+        _check_empty_reference(train_dataset, rubric),
         _check_no_held_out(has_test_slice=test_dataset is not None),
     ]
     return findings
