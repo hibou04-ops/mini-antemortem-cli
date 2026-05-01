@@ -42,6 +42,7 @@ dev = [
 mcp = ["mcp>=1.0.0"]
 
 [project.scripts]
+mini-antemortem-cli = "mini_antemortem_cli.cli:main"
 mini-antemortem-cli-mcp = "mini_antemortem_cli.mcp.__main__:main"
 
 [project.urls]
