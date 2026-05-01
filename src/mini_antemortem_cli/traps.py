@@ -292,6 +292,52 @@ def _check_sample_power(train_size: int, test_size: int | None) -> AnalyticalFin
     )
 
 
+def _tokenize_for_jaccard(text: str) -> set[str]:
+    """Lowercased word-level token set used for Jaccard similarity.
+
+    Whitespace split with light punctuation stripping. Deliberately simple:
+    we only need a Pareto signal that two prompts share most of their
+    vocabulary, not a real NLP tokenizer.
+    """
+    if not text:
+        return set()
+    cleaned = text.lower()
+    for ch in ".,;:!?\"'`()[]{}<>":
+        cleaned = cleaned.replace(ch, " ")
+    return {tok for tok in cleaned.split() if tok}
+
+
+def _max_pairwise_jaccard(prompts: list[str]) -> float:
+    """Highest pairwise Jaccard similarity over the prompt list.
+
+    Returns 0.0 for fewer than 2 prompts. The max (rather than mean) is
+    used so a single near-duplicate pair flags the trap even when other
+    variants are diverse.
+    """
+    if len(prompts) < 2:
+        return 0.0
+    token_sets = [_tokenize_for_jaccard(p) for p in prompts]
+    best = 0.0
+    for i in range(len(token_sets)):
+        for j in range(i + 1, len(token_sets)):
+            a, b = token_sets[i], token_sets[j]
+            if not a and not b:
+                continue
+            union = a | b
+            if not union:
+                continue
+            jaccard = len(a & b) / len(union)
+            if jaccard > best:
+                best = jaccard
+    return best
+
+
+# Threshold above which variants are considered semantic near-duplicates.
+# 0.7 is permissive — variants legitimately share role/system framing
+# tokens. Above this they're mostly the same prompt with cosmetic edits.
+_JACCARD_NEAR_DUPLICATE = 0.70
+
+
 def _check_variants_homogeneity(variants: PromptVariants) -> AnalyticalFinding:
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "variants_homogeneous")
     prompts = variants.system_prompts
@@ -304,15 +350,43 @@ def _check_variants_homogeneity(variants: PromptVariants) -> AnalyticalFinding:
             remediation="Provide at least 3 genuinely distinct system prompts.",
         )
     lengths = [len(p) for p in prompts]
-    if max(lengths) - min(lengths) < 20 and len(prompts) <= 3:
+    length_span_small = max(lengths) - min(lengths) < 20 and len(prompts) <= 3
+    max_jaccard = _max_pairwise_jaccard(list(prompts))
+    high_token_overlap = max_jaccard >= _JACCARD_NEAR_DUPLICATE
+
+    # Trap fires when EITHER signal triggers — length compactness OR
+    # token overlap. Reviewer 4순위 last sub-item: length alone misses
+    # cases where two prompts of very different lengths share most of
+    # their vocabulary (e.g. one prompt is the other plus a closing
+    # sentence), and length-different but semantically-identical
+    # variants don't produce meaningful sensitivity.
+    if high_token_overlap:
+        return _finding(
+            trap,
+            label="REAL",
+            severity=PreflightSeverity.MEDIUM,
+            note=(
+                f"System-prompt variants share {max_jaccard:.0%} of vocabulary "
+                f"(token Jaccard) at their most-similar pair; even with "
+                f"{min(lengths)}-{max(lengths)} char span, variants are likely "
+                "near-duplicates and will not produce meaningful sensitivity."
+            ),
+            remediation=(
+                "Author variants that differ in role framing, instruction style, "
+                "or task decomposition — not just wording. Aim for max pairwise "
+                f"Jaccard below {_JACCARD_NEAR_DUPLICATE:.0%}."
+            ),
+        )
+    if length_span_small:
         return _finding(
             trap,
             label="NEW",
             severity=PreflightSeverity.MEDIUM,
             note=(
                 f"All {len(prompts)} system prompts have near-identical length "
-                f"({min(lengths)}-{max(lengths)} chars); they may be too similar to "
-                "produce meaningful sensitivity."
+                f"({min(lengths)}-{max(lengths)} chars, max Jaccard "
+                f"{max_jaccard:.0%}); they may be too similar to produce "
+                "meaningful sensitivity."
             ),
             remediation=(
                 "Author variants that differ in role framing, not just wording; "
@@ -324,8 +398,9 @@ def _check_variants_homogeneity(variants: PromptVariants) -> AnalyticalFinding:
         label="GHOST",
         severity=PreflightSeverity.LOW,
         note=(
-            f"System-prompt variants span {min(lengths)}-{max(lengths)} chars; "
-            "sufficient diversity expected."
+            f"System-prompt variants span {min(lengths)}-{max(lengths)} chars "
+            f"(max pairwise Jaccard {max_jaccard:.0%}); sufficient diversity "
+            "expected."
         ),
     )
 
