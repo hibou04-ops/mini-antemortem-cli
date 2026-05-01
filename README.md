@@ -2,9 +2,11 @@
 
 > **Analytical preflight for [omegaprompt](https://pypi.org/project/omegaprompt/) calibration.** Reads run config, classifies seven calibration-specific trap patterns against deterministic rules. **No API calls, no network** — reasoning is deterministic given inputs. Emits `AnalyticalFinding` records that feed omegaprompt's `derive_adaptation_plan`.
 
+[![CI](https://github.com/hibou04-ops/mini-antemortem-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/hibou04-ops/mini-antemortem-cli/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/badge/pypi-0.3.0-blue.svg)](https://pypi.org/project/mini-antemortem-cli/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org)
+[![Tests](https://img.shields.io/badge/tests-69%20passing-brightgreen.svg)](tests/)
 [![Parent](https://img.shields.io/badge/parent-omegaprompt%E2%89%A51.4.0-blueviolet.svg)](https://pypi.org/project/omegaprompt/)
 
 > **Part of the omegaprompt toolkit** — [omegaprompt](https://github.com/hibou04-ops/omegaprompt) (calibration engine) · [omega-lock](https://github.com/hibou04-ops/omega-lock) (audit framework) · [antemortem-cli](https://github.com/hibou04-ops/antemortem-cli) (pre-implementation recon CLI) · [mini-omega-lock](https://github.com/hibou04-ops/mini-omega-lock) (empirical preflight) · [mini-antemortem-cli](https://github.com/hibou04-ops/mini-antemortem-cli) (analytical preflight, this repo) · [Antemortem](https://github.com/hibou04-ops/Antemortem) (methodology). Cross-toolkit cookbook: [AGENT_TRIGGERS.md](https://github.com/hibou04-ops/omegaprompt/blob/main/AGENT_TRIGGERS.md).
