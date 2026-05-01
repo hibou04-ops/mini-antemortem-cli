@@ -237,7 +237,19 @@ def test_judge_budget_ghost_on_medium_budget():
     assert f.label == "GHOST"
 
 
-def test_empty_reference_flagged_new_when_no_refs():
+def test_empty_reference_real_when_no_refs_and_rubric_implies_ground_truth():
+    """Reviewer 4순위: trap fires only when the rubric actually requires
+    a reference. Self-contained rubrics with no refs are GHOST."""
+    rubric_needs_ref = JudgeRubric(
+        dimensions=[
+            Dimension(
+                name="accuracy",
+                description="Does the answer match the expected output?",
+                weight=1.0,
+            ),
+        ],
+        hard_gates=[HardGate(name="g0", description="g", evaluator="judge")],
+    )
     findings = analytical_preflight(
         target_provider="anthropic",
         target_model="claude",
@@ -245,11 +257,28 @@ def test_empty_reference_flagged_new_when_no_refs():
         judge_model="gpt",
         train_dataset=_dataset(n=20, with_ref=False),
         test_dataset=_dataset(n=15, with_ref=False),
-        rubric=_rubric(),
+        rubric=rubric_needs_ref,
         variants=_variants(),
     )
     f = _by_trap(findings, "empty_reference_with_strict_rubric")
-    assert f.label == "NEW"
+    assert f.label == "REAL"
+
+
+def test_empty_reference_ghost_when_rubric_self_contained():
+    """Self-contained rubric ('is the response polite?') with no refs
+    is fine — pre-fix this got flagged NEW."""
+    findings = analytical_preflight(
+        target_provider="anthropic",
+        target_model="claude",
+        judge_provider="openai",
+        judge_model="gpt",
+        train_dataset=_dataset(n=20, with_ref=False),
+        test_dataset=_dataset(n=15, with_ref=False),
+        rubric=_rubric(),  # default _rubric: descriptions like "accuracy description"
+        variants=_variants(),
+    )
+    f = _by_trap(findings, "empty_reference_with_strict_rubric")
+    assert f.label == "GHOST"
 
 
 def test_empty_reference_ghost_when_refs_present():
