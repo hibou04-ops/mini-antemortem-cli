@@ -126,9 +126,13 @@ def test_cli_check_json_output_machine_readable(tmp_path: Path, capsys):
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     assert "findings" in payload
-    assert len(payload["findings"]) == 7
+    assert len(payload["findings"]) == 8  # 7 original + train_test_id_overlap
     for f in payload["findings"]:
         assert {"trap_id", "label", "hypothesis", "severity"}.issubset(f)
+    # Reviewer P2: summary fields are part of the JSON envelope.
+    assert payload["status"] in {"PASS", "ADVISORY", "HOLD", "BLOCK", "NEEDS_MORE_EVIDENCE"}
+    assert payload["highest_severity"] in {"low", "medium", "high", "blocker"}
+    assert {"REAL", "GHOST", "NEW", "UNRESOLVED"}.issubset(payload["counts"])
 
 
 def test_cli_check_no_test_slice_flags_no_held_out(tmp_path: Path, capsys):

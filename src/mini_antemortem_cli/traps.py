@@ -13,7 +13,10 @@ the core pipeline can stand alone.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from collections import Counter
+from dataclasses import dataclass, field
+from pathlib import Path
 
 from omegaprompt.domain.dataset import Dataset
 from omegaprompt.domain.judge import JudgeRubric
@@ -22,6 +25,52 @@ from omegaprompt.preflight.contracts import (
     AnalyticalFinding,
     PreflightSeverity,
 )
+
+
+# ---------------------------------------------------------------------------
+# Reviewer P1 — TrapPolicy: extract previously-hardcoded thresholds.
+#
+# All policy fields are tuneable per call site. The defaults below match
+# the pre-policy hardcoded values, so existing callers see identical
+# behaviour. Pass a ``TrapPolicy(...)`` to ``analytical_preflight`` (or
+# ``--policy policy.json`` on the CLI) to override per-domain.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class TrapPolicy:
+    """Tuneable thresholds for the deterministic classifiers.
+
+    Field-by-field meaning:
+
+    - ``min_test_items_high``: test slice size below which Pearson power
+      is too weak to trust (REAL/HIGH on small_sample_kc4_power).
+    - ``min_total_items_medium``: total dataset size below which noise
+      absorption is limited (REAL/MEDIUM on small_sample_kc4_power).
+    - ``near_duplicate_jaccard``: max pairwise prompt Jaccard above
+      which variants are flagged as near-duplicates.
+    - ``rubric_concentration_threshold``: per-dimension weight above
+      which the rubric is judged single-axis-dominated.
+    - ``small_budget_axis_limit``: number of rubric axes beyond which a
+      SMALL judge output budget is at risk of truncation.
+    - ``fail_on_missing_test``: whether the no-held-out-slice trap fires
+      when ``test_dataset`` is None (defaults to True).
+    """
+
+    min_test_items_high: int = 10
+    min_total_items_medium: int = 20
+    near_duplicate_jaccard: float = 0.70
+    rubric_concentration_threshold: float = 0.70
+    small_budget_axis_limit: int = 5
+    fail_on_missing_test: bool = True
+
+    @classmethod
+    def from_json_file(cls, path: str | Path) -> "TrapPolicy":
+        body = json.loads(Path(path).read_text(encoding="utf-8"))
+        return cls(**{k: v for k, v in body.items() if k in cls.__dataclass_fields__})
+
+
+_DEFAULT_POLICY = TrapPolicy()
 
 
 # ----- Reviewer 4순위: canonicalization helpers -----
@@ -101,17 +150,23 @@ _REFERENCE_KEYWORDS: tuple[str, ...] = (
 
 
 def _rubric_implies_ground_truth(rubric: JudgeRubric) -> bool:
-    """True when at least one dimension's description hints at a reference.
+    """True when rubric text hints at a reference comparison.
 
-    Used to scope the ``empty_reference_with_strict_rubric`` trap to
-    rubrics that actually depend on a reference; self-contained rubrics
-    (e.g. \"is the response polite?\") get a GHOST instead of NEW.
+    Scans both dimension descriptions/names AND hard gate
+    descriptions/names. A rubric whose dimensions look self-contained
+    but whose hard gate says "must match the reference exactly" is
+    still ground-truth-dependent — an empty reference invalidates the
+    rubric. Pre-fix this only checked dimensions and missed that case.
     """
+    blobs: list[str] = []
     for dim in rubric.dimensions:
-        desc = (dim.description or "").lower()
-        if any(kw in desc for kw in _REFERENCE_KEYWORDS):
-            return True
-    return False
+        blobs.append((dim.description or "").lower())
+        blobs.append((getattr(dim, "name", "") or "").lower())
+    for gate in rubric.hard_gates:
+        blobs.append((getattr(gate, "description", "") or "").lower())
+        blobs.append((getattr(gate, "name", "") or "").lower())
+    haystack = " ".join(blobs)
+    return any(kw in haystack for kw in _REFERENCE_KEYWORDS)
 
 
 @dataclass(frozen=True)
@@ -170,6 +225,14 @@ CALIBRATION_TRAPS: tuple[TrapPattern, ...] = (
         hypothesis=(
             "User did not pass --test; walk-forward cannot run; ship "
             "decision has no generalisation evidence."
+        ),
+    ),
+    TrapPattern(
+        id="train_test_id_overlap",
+        hypothesis=(
+            "Items appear in both train and test, or duplicate ids exist "
+            "within either slice; KC-4 / per-item correlation reads on a "
+            "leaked dataset are meaningless."
         ),
     ),
 )
@@ -251,7 +314,11 @@ def _check_self_agreement(
     )
 
 
-def _check_sample_power(train_size: int, test_size: int | None) -> AnalyticalFinding:
+def _check_sample_power(
+    train_size: int,
+    test_size: int | None,
+    policy: TrapPolicy = _DEFAULT_POLICY,
+) -> AnalyticalFinding:
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "small_sample_kc4_power")
     total = train_size + (test_size or 0)
     if test_size is None:
@@ -262,26 +329,30 @@ def _check_sample_power(train_size: int, test_size: int | None) -> AnalyticalFin
             severity=PreflightSeverity.LOW,
             note="No --test slice provided; Pearson check will not execute.",
         )
-    if test_size < 10:
+    if test_size < policy.min_test_items_high:
         return _finding(
             trap,
             label="REAL",
             severity=PreflightSeverity.HIGH,
             note=(
-                f"Test slice has {test_size} items. Pearson correlation at n={test_size} "
-                "has weak statistical power; KC-4 pass/fail may be random."
+                f"Test slice has {test_size} items "
+                f"(threshold {policy.min_test_items_high}). Pearson correlation "
+                f"at n={test_size} has weak statistical power; KC-4 pass/fail may be random."
             ),
             remediation=(
                 "Expand test set to at least 20 items, or raise --min-kc4 adaptively "
                 "(handled by AdaptationPlan)."
             ),
         )
-    if total < 20:
+    if total < policy.min_total_items_medium:
         return _finding(
             trap,
             label="REAL",
             severity=PreflightSeverity.MEDIUM,
-            note=f"Total dataset is {total} items; noise absorption limited.",
+            note=(
+                f"Total dataset is {total} items "
+                f"(threshold {policy.min_total_items_medium}); noise absorption limited."
+            ),
             remediation="Larger datasets yield more reliable calibration gradients.",
         )
     return _finding(
@@ -338,7 +409,10 @@ def _max_pairwise_jaccard(prompts: list[str]) -> float:
 _JACCARD_NEAR_DUPLICATE = 0.70
 
 
-def _check_variants_homogeneity(variants: PromptVariants) -> AnalyticalFinding:
+def _check_variants_homogeneity(
+    variants: PromptVariants,
+    policy: TrapPolicy = _DEFAULT_POLICY,
+) -> AnalyticalFinding:
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "variants_homogeneous")
     prompts = variants.system_prompts
     if len(prompts) < 2:
@@ -352,7 +426,7 @@ def _check_variants_homogeneity(variants: PromptVariants) -> AnalyticalFinding:
     lengths = [len(p) for p in prompts]
     length_span_small = max(lengths) - min(lengths) < 20 and len(prompts) <= 3
     max_jaccard = _max_pairwise_jaccard(list(prompts))
-    high_token_overlap = max_jaccard >= _JACCARD_NEAR_DUPLICATE
+    high_token_overlap = max_jaccard >= policy.near_duplicate_jaccard
 
     # Trap fires when EITHER signal triggers — length compactness OR
     # token overlap. Reviewer 4순위 last sub-item: length alone misses
@@ -374,7 +448,7 @@ def _check_variants_homogeneity(variants: PromptVariants) -> AnalyticalFinding:
             remediation=(
                 "Author variants that differ in role framing, instruction style, "
                 "or task decomposition — not just wording. Aim for max pairwise "
-                f"Jaccard below {_JACCARD_NEAR_DUPLICATE:.0%}."
+                f"Jaccard below {policy.near_duplicate_jaccard:.0%}."
             ),
         )
     if length_span_small:
@@ -405,14 +479,17 @@ def _check_variants_homogeneity(variants: PromptVariants) -> AnalyticalFinding:
     )
 
 
-def _check_rubric_concentration(rubric: JudgeRubric) -> AnalyticalFinding:
+def _check_rubric_concentration(
+    rubric: JudgeRubric,
+    policy: TrapPolicy = _DEFAULT_POLICY,
+) -> AnalyticalFinding:
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "rubric_weight_concentration")
     weights = rubric.normalized_weights()
     if not weights:
         return _finding(trap, label="UNRESOLVED")
     max_w = max(weights.values())
     max_name = max(weights, key=weights.get)  # type: ignore[arg-type]
-    if max_w > 0.7:
+    if max_w > policy.rubric_concentration_threshold:
         return _finding(
             trap,
             label="REAL",
@@ -434,7 +511,11 @@ def _check_rubric_concentration(rubric: JudgeRubric) -> AnalyticalFinding:
     )
 
 
-def _check_judge_budget(rubric: JudgeRubric, judge_output_budget: object) -> AnalyticalFinding:
+def _check_judge_budget(
+    rubric: JudgeRubric,
+    judge_output_budget: object,
+    policy: TrapPolicy = _DEFAULT_POLICY,
+) -> AnalyticalFinding:
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "judge_budget_too_small")
     n_dims = len(rubric.dimensions)
     n_gates = len([g for g in rubric.hard_gates if g.evaluator == "judge"])
@@ -445,7 +526,7 @@ def _check_judge_budget(rubric: JudgeRubric, judge_output_budget: object) -> Ana
     # exact lowercase string literal and silently let enum / mixed-case
     # callers slip through.
     canon = _canonical_budget(judge_output_budget)
-    if canon == "small" and total_axes > 5:
+    if canon == "small" and total_axes > policy.small_budget_axis_limit:
         return _finding(
             trap,
             label="REAL",
@@ -506,6 +587,70 @@ def _check_empty_reference(dataset: Dataset, rubric: JudgeRubric) -> AnalyticalF
     )
 
 
+def _check_dataset_leakage(
+    train_dataset: Dataset, test_dataset: Dataset | None
+) -> AnalyticalFinding:
+    """Detect train/test ID overlap and duplicate IDs within either slice.
+
+    Per-item correlation (Pearson KC-4) and walk-forward generalisation
+    rely on test items being unseen during train. An overlap silently
+    inflates correlation; the calibration looks like it generalises
+    when it has memorised. This trap is deterministic, cheap to run,
+    and exposes the failure that no statistical check would catch
+    later.
+    """
+    trap = next(t for t in CALIBRATION_TRAPS if t.id == "train_test_id_overlap")
+    train_ids = [item.id for item in train_dataset.items]
+    test_ids = [item.id for item in test_dataset.items] if test_dataset is not None else []
+
+    train_dupes = sorted({i for i, c in Counter(train_ids).items() if c > 1})
+    test_dupes = sorted({i for i, c in Counter(test_ids).items() if c > 1})
+    overlap = sorted(set(train_ids) & set(test_ids))
+
+    if overlap:
+        sample = ", ".join(overlap[:5])
+        more = f" (+{len(overlap) - 5} more)" if len(overlap) > 5 else ""
+        return _finding(
+            trap,
+            label="REAL",
+            severity=PreflightSeverity.HIGH,
+            note=(
+                f"{len(overlap)} item id(s) appear in both train and test: "
+                f"{sample}{more}. Per-item correlation will be inflated by "
+                "memorisation."
+            ),
+            remediation=(
+                "Remove the overlapping ids from the test slice (or from "
+                "train) and re-run. ID disjointness is a hard prerequisite "
+                "for KC-4 power."
+            ),
+        )
+    if train_dupes or test_dupes:
+        all_dupes = (train_dupes or []) + (test_dupes or [])
+        sample = ", ".join(all_dupes[:5])
+        more = f" (+{len(all_dupes) - 5} more)" if len(all_dupes) > 5 else ""
+        return _finding(
+            trap,
+            label="REAL",
+            severity=PreflightSeverity.MEDIUM,
+            note=(
+                f"Duplicate item id(s) within slices: {sample}{more}. "
+                "Pearson assumes distinct observations; weights duplicates "
+                "twice."
+            ),
+            remediation="Deduplicate dataset ids before re-running.",
+        )
+    return _finding(
+        trap,
+        label="GHOST",
+        severity=PreflightSeverity.LOW,
+        note=(
+            f"No overlap or duplicates across {len(train_ids)} train + "
+            f"{len(test_ids)} test ids."
+        ),
+    )
+
+
 def _check_no_held_out(has_test_slice: bool) -> AnalyticalFinding:
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "no_held_out_slice")
     if not has_test_slice:
@@ -539,22 +684,108 @@ def analytical_preflight(
     rubric: JudgeRubric,
     variants: PromptVariants,
     judge_output_budget: str = "small",
+    policy: TrapPolicy | None = None,
 ) -> list[AnalyticalFinding]:
     """Run analytical preflight checks and return one finding per trap.
 
     All checks are deterministic given the inputs. The ordering of the
     returned list is stable (same order as :data:`CALIBRATION_TRAPS`).
+
+    Args:
+        policy: Optional :class:`TrapPolicy` overriding default thresholds
+            (test size cutoffs, near-duplicate Jaccard, rubric concentration
+            limit, etc.). When ``None`` the package defaults are used.
+            Pass a domain-specific policy when classification thresholds
+            need to differ from generic defaults — e.g. open-ended writing
+            tasks may want a higher ``near_duplicate_jaccard``.
     """
+    pol = policy or _DEFAULT_POLICY
     findings: list[AnalyticalFinding] = [
         _check_self_agreement(target_provider, target_model, judge_provider, judge_model),
         _check_sample_power(
             train_size=len(train_dataset),
             test_size=len(test_dataset) if test_dataset is not None else None,
+            policy=pol,
         ),
-        _check_variants_homogeneity(variants),
-        _check_rubric_concentration(rubric),
-        _check_judge_budget(rubric, judge_output_budget),
+        _check_variants_homogeneity(variants, policy=pol),
+        _check_rubric_concentration(rubric, policy=pol),
+        _check_judge_budget(rubric, judge_output_budget, policy=pol),
         _check_empty_reference(train_dataset, rubric),
         _check_no_held_out(has_test_slice=test_dataset is not None),
+        _check_dataset_leakage(train_dataset, test_dataset),
     ]
     return findings
+
+
+# ---------------------------------------------------------------------------
+# Reviewer P2 — summary output for CI / agent integration.
+# ---------------------------------------------------------------------------
+
+
+_SEVERITY_RANK: dict[str, int] = {
+    "low": 1,
+    "medium": 2,
+    "high": 3,
+    "blocker": 4,
+}
+
+
+def _sev_str(s: object) -> str:
+    return str(getattr(s, "value", s)).lower()
+
+
+def summarize_findings(findings: list[AnalyticalFinding]) -> dict:
+    """Roll-up status / counts / max-severity over a finding list.
+
+    Status rules:
+
+    - ``BLOCK``     — any REAL/UNRESOLVED finding at severity BLOCKER
+    - ``HOLD``      — any REAL finding at severity HIGH
+    - ``ADVISORY``  — REAL/MEDIUM or REAL/LOW only
+    - ``NEEDS_MORE_EVIDENCE`` — UNRESOLVED present, no REAL/HIGH+
+    - ``PASS``      — all GHOST or NEW
+
+    Useful for CI integration where a single ``status`` field can drive
+    pipeline behaviour without re-implementing the rubric in shell.
+    """
+    counts: dict[str, int] = {"REAL": 0, "GHOST": 0, "NEW": 0, "UNRESOLVED": 0}
+    highest_sev = "low"
+    has_real_blocker = False
+    has_unresolved_blocker = False
+    has_real_high = False
+    has_real = False
+    has_unresolved = False
+
+    for f in findings:
+        label = f.label
+        counts[label] = counts.get(label, 0) + 1
+        sev = _sev_str(f.severity)
+        if _SEVERITY_RANK.get(sev, 0) > _SEVERITY_RANK.get(highest_sev, 0):
+            highest_sev = sev
+        if label == "REAL":
+            has_real = True
+            if sev == "blocker":
+                has_real_blocker = True
+            if sev == "high":
+                has_real_high = True
+        if label == "UNRESOLVED":
+            has_unresolved = True
+            if sev == "blocker":
+                has_unresolved_blocker = True
+
+    if has_real_blocker or has_unresolved_blocker:
+        status = "BLOCK"
+    elif has_real_high:
+        status = "HOLD"
+    elif has_unresolved:
+        status = "NEEDS_MORE_EVIDENCE"
+    elif has_real:
+        status = "ADVISORY"
+    else:
+        status = "PASS"
+
+    return {
+        "status": status,
+        "highest_severity": highest_sev,
+        "counts": counts,
+    }
