@@ -20,6 +20,15 @@ from omegaprompt.domain.judge import Dimension, HardGate, JudgeRubric
 from omegaprompt.domain.params import PromptVariants
 
 
+@pytest.fixture(autouse=True)
+def _workspace_root_to_tmp(monkeypatch, tmp_path):
+    """All MCP execution tests use ``tmp_path`` for their dataset / rubric
+    files. The workspace boundary added in audit item #8 defaults to cwd,
+    so we pin ``MINI_ANTEMORTEM_WORKSPACE_ROOT`` to ``tmp_path`` here for
+    every test in this file."""
+    monkeypatch.setenv("MINI_ANTEMORTEM_WORKSPACE_ROOT", str(tmp_path))
+
+
 @pytest.fixture
 def mcp_server():
     from mini_antemortem_cli.mcp import server as srv
