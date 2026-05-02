@@ -33,16 +33,20 @@ used alone; both compose into the same ``PreflightReport``.
 from mini_antemortem_cli.traps import (
     CALIBRATION_TRAPS,
     TrapPattern,
+    TrapPolicy,
     analytical_preflight,
     analytical_traps,
+    summarize_findings,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "CALIBRATION_TRAPS",
     "TrapPattern",
+    "TrapPolicy",
     "analytical_preflight",
     "analytical_traps",
+    "summarize_findings",
     "__version__",
 ]

@@ -44,7 +44,12 @@ from omegaprompt.domain.params import PromptVariants
 from omegaprompt.preflight.contracts import AnalyticalFinding, PreflightSeverity
 
 from mini_antemortem_cli import __version__
-from mini_antemortem_cli.traps import analytical_preflight, analytical_traps
+from mini_antemortem_cli.traps import (
+    TrapPolicy,
+    analytical_preflight,
+    analytical_traps,
+    summarize_findings,
+)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -101,14 +106,52 @@ def _build_parser() -> argparse.ArgumentParser:
         help="LLM judge output budget bucket (small | medium | large). Default: small.",
     )
     check.add_argument(
+        "--policy",
+        type=Path,
+        default=None,
+        metavar="POLICY.JSON",
+        help=(
+            "Optional TrapPolicy JSON file overriding default thresholds "
+            "(min_test_items_high, near_duplicate_jaccard, etc.). Field names "
+            "match TrapPolicy dataclass; unknown fields are ignored."
+        ),
+    )
+    check.add_argument(
         "--json",
         action="store_true",
         help="Emit findings as JSON to stdout instead of human-readable text.",
     )
     check.add_argument(
+        "--fail-on-severity",
+        choices=["low", "medium", "high", "blocker"],
+        default=None,
+        metavar="LEVEL",
+        help=(
+            "Exit non-zero when any finding's severity is at least LEVEL. "
+            "Recommended for CI: --fail-on-severity high. Off by default — "
+            "analytical preflight is advisory unless this flag is set."
+        ),
+    )
+    check.add_argument(
+        "--fail-on-label",
+        default=None,
+        metavar="LABELS",
+        help=(
+            "Comma-separated finding labels that trigger non-zero exit when "
+            "combined with --fail-on-severity. Default: REAL,UNRESOLVED. "
+            "Set to 'REAL' for stricter gates or 'REAL,NEW,UNRESOLVED' for "
+            "broader coverage."
+        ),
+    )
+    check.add_argument(
         "--fail-on-blocker",
         action="store_true",
-        help="Exit non-zero if any finding has severity=blocker. Off by default — analytical preflight is advisory.",
+        help=(
+            "Deprecated alias for `--fail-on-severity blocker --fail-on-label "
+            "REAL,NEW,UNRESOLVED`. Currently almost-always a no-op because no "
+            "built-in trap emits BLOCKER severity. Use --fail-on-severity "
+            "high for the CI gate users typically intend."
+        ),
     )
 
     sub.add_parser(
@@ -117,6 +160,27 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
+
+_SEVERITY_ORDER: dict[str, int] = {
+    "low": 1,
+    "medium": 2,
+    "high": 3,
+    "blocker": 4,
+}
+
+
+def _should_fail(
+    finding: AnalyticalFinding,
+    *,
+    min_severity: str,
+    labels: set[str],
+) -> bool:
+    sev = str(getattr(finding.severity, "value", finding.severity)).lower()
+    return (
+        finding.label in labels
+        and _SEVERITY_ORDER.get(sev, 0) >= _SEVERITY_ORDER[min_severity]
+    )
 
 
 def _load_variants(path: Path) -> PromptVariants:
@@ -143,8 +207,12 @@ def _format_text(findings: Sequence[AnalyticalFinding]) -> str:
 
 
 def _format_json(findings: Sequence[AnalyticalFinding]) -> str:
+    summary = summarize_findings(list(findings))
     return json.dumps(
-        {"findings": [f.model_dump(mode="json") for f in findings]},
+        {
+            **summary,
+            "findings": [f.model_dump(mode="json") for f in findings],
+        },
         indent=2,
         ensure_ascii=False,
     )
@@ -155,6 +223,7 @@ def _run_check(args: argparse.Namespace) -> int:
     test = Dataset.from_jsonl(args.test) if args.test else None
     rubric = JudgeRubric.from_json(args.rubric)
     variants = _load_variants(args.variants)
+    policy = TrapPolicy.from_json_file(args.policy) if args.policy else None
 
     findings = analytical_preflight(
         target_provider=args.target_provider,
@@ -166,6 +235,7 @@ def _run_check(args: argparse.Namespace) -> int:
         rubric=rubric,
         variants=variants,
         judge_output_budget=args.judge_output_budget,
+        policy=policy,
     )
 
     if args.json:
@@ -173,10 +243,17 @@ def _run_check(args: argparse.Namespace) -> int:
     else:
         print(_format_text(findings))
 
-    if args.fail_on_blocker and any(
-        f.severity == PreflightSeverity.BLOCKER for f in findings
-    ):
-        return 1
+    # Resolve gate. New flags win over the deprecated --fail-on-blocker.
+    min_severity: str | None = args.fail_on_severity
+    if min_severity is None and args.fail_on_blocker:
+        min_severity = "blocker"
+    if min_severity is not None:
+        if args.fail_on_label:
+            label_set = {tok.strip().upper() for tok in args.fail_on_label.split(",") if tok.strip()}
+        else:
+            label_set = {"REAL", "UNRESOLVED"}
+        if any(_should_fail(f, min_severity=min_severity, labels=label_set) for f in findings):
+            return 1
     return 0
 
 
