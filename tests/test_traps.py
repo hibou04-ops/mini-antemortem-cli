@@ -58,6 +58,7 @@ def test_trap_registry_contains_all_expected():
         "judge_budget_too_small",
         "empty_reference_with_strict_rubric",
         "no_held_out_slice",
+        "train_test_id_overlap",
     }
 
 

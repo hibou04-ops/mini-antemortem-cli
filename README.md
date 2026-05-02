@@ -49,13 +49,29 @@ from mini_antemortem_cli import analytical_preflight
 # Your run config
 rubric = JudgeRubric(
     dimensions=[Dimension(name="accuracy", description="x", weight=1.0)],
-    hard_gates=[HardGate(name="no_violation", description="y")],
+    hard_gates=[HardGate(name="no_violation", description="y", evaluator="judge")],
 )
-dataset = Dataset(items=[DatasetItem(id="ex1", input="2+2", reference="4")])
-variants = PromptVariants(...)
+train = Dataset(items=[DatasetItem(id="ex1", input="2+2", reference="4")])
+test  = Dataset(items=[DatasetItem(id="ex2", input="3+3", reference="6")])
+variants = PromptVariants(system_prompts=["You are an assistant."], few_shot_examples=[])
 
-# Run all seven trap classifiers — fully offline, fully deterministic
-findings = analytical_preflight(dataset=dataset, rubric=rubric, variants=variants)
+# Run all seven trap classifiers — fully offline, fully deterministic.
+# (Every keyword is required — analytical_preflight does not infer
+# target_provider / judge_provider from the dataset.)
+findings = analytical_preflight(
+    target_provider="anthropic",
+    target_model="claude-opus-4-7",
+    judge_provider="openai",
+    judge_model="gpt-4.1",
+    train_dataset=train,
+    test_dataset=test,                  # optional but strongly recommended
+    rubric=rubric,
+    variants=variants,
+    judge_output_budget="small",        # "small" | "medium" | "large"
+)
+
+for f in findings:
+    print(f"{f.trap_id}: {f.label} / {f.severity}")
 
 # Feed into omegaprompt's adaptation layer
 report = PreflightReport(analytical_findings=findings)
