@@ -70,7 +70,7 @@ def _variants_dict() -> dict:
 # ---------------------------------------------------------------------------
 
 
-def test_mcp_analytical_preflight_returns_eight_findings(mcp_server, tmp_path):
+def test_mcp_analytical_preflight_returns_nine_findings(mcp_server, tmp_path):
     train = tmp_path / "train.jsonl"
     test = tmp_path / "test.jsonl"
     _write_dataset(train, n=15, with_ref=True)
@@ -89,8 +89,9 @@ def test_mcp_analytical_preflight_returns_eight_findings(mcp_server, tmp_path):
     )
     # JSON-encodable through the MCP boundary:
     json.dumps(findings)
-    # All 8 traps must appear (8th: train_test_id_overlap, P1 #4 in
-    # the audit batch — REAL/HIGH on overlap, REAL/MEDIUM on dupes).
+    # All 9 traps must appear (8th: train_test_id_overlap from earlier
+    # batch; 9th: routed_provider_opaque_family from item #6 — fires
+    # GHOST/LOW for non-routed providers, UNRESOLVED/MEDIUM otherwise).
     expected = {
         "self_agreement_bias",
         "small_sample_kc4_power",
@@ -100,6 +101,7 @@ def test_mcp_analytical_preflight_returns_eight_findings(mcp_server, tmp_path):
         "empty_reference_with_strict_rubric",
         "no_held_out_slice",
         "train_test_id_overlap",
+        "routed_provider_opaque_family",
     }
     actual = {f["trap_id"] for f in findings}
     assert actual == expected
@@ -156,7 +158,7 @@ def test_mcp_analytical_preflight_handles_inline_rubric_dict(mcp_server, tmp_pat
         rubric=_rubric_dict(),  # dict, not path
         variants=_variants_dict(),  # dict, not path
     )
-    assert len(findings) == 8
+    assert len(findings) == 9
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +166,7 @@ def test_mcp_analytical_preflight_handles_inline_rubric_dict(mcp_server, tmp_pat
 # ---------------------------------------------------------------------------
 
 
-def test_mcp_list_traps_returns_all_eight(mcp_server):
+def test_mcp_list_traps_returns_all_nine(mcp_server):
     traps = mcp_server.list_traps()
     json.dumps(traps)
     ids = {t["id"] for t in traps}
@@ -177,6 +179,7 @@ def test_mcp_list_traps_returns_all_eight(mcp_server):
         "empty_reference_with_strict_rubric",
         "no_held_out_slice",
         "train_test_id_overlap",
+        "routed_provider_opaque_family",
     }
     for t in traps:
         assert "hypothesis" in t
