@@ -126,7 +126,7 @@ def test_cli_check_json_output_machine_readable(tmp_path: Path, capsys):
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     assert "findings" in payload
-    assert len(payload["findings"]) == 8  # 7 original + train_test_id_overlap
+    assert len(payload["findings"]) == 9  # 8 + routed_provider_opaque_family
     for f in payload["findings"]:
         assert {"trap_id", "label", "hypothesis", "severity"}.issubset(f)
     # Reviewer P2: summary fields are part of the JSON envelope.

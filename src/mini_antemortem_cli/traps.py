@@ -106,10 +106,41 @@ _PROVIDER_FAMILY: dict[str, str] = {
 }
 
 
+# Reviewer P1 #6: routed / aggregator providers forward to a backend
+# model that the user picked, but the family-collapse logic above can't
+# tell which family the *served* model belongs to. Treating
+# ``openrouter`` (etc.) as its own family hides self-agreement bias when
+# the underlying served model is OpenAI on both sides.
+#
+# Conservative list: only aggregators where the public docs explicitly
+# describe themselves as a router/proxy/gateway across multiple
+# vendors. A dedicated single-vendor host (e.g. anthropic.com) is NOT
+# in here; only multi-vendor routers.
+_ROUTED_PROVIDERS: frozenset[str] = frozenset({
+    "openrouter",
+    "together",
+    "together-ai",
+    "fireworks",
+    "fireworks-ai",
+    "groq",
+    "bedrock",  # AWS Bedrock fronts Anthropic/Cohere/Meta/etc.
+    "perplexity",
+    "deepinfra",
+    "replicate",
+    "litellm",
+    "openllm",
+})
+
+
 def _provider_family(name: str | None) -> str:
     """Return the canonical family or the canonicalized name as-is."""
     canon = _canonical_provider(name)
     return _PROVIDER_FAMILY.get(canon, canon)
+
+
+def _is_routed_provider(name: str | None) -> bool:
+    """Did the user name a multi-vendor routing aggregator (OpenRouter et al.)?"""
+    return _canonical_provider(name) in _ROUTED_PROVIDERS
 
 
 def _canonical_budget(budget: object) -> str:
@@ -233,6 +264,15 @@ CALIBRATION_TRAPS: tuple[TrapPattern, ...] = (
             "Items appear in both train and test, or duplicate ids exist "
             "within either slice; KC-4 / per-item correlation reads on a "
             "leaked dataset are meaningless."
+        ),
+    ),
+    TrapPattern(
+        id="routed_provider_opaque_family",
+        hypothesis=(
+            "Target or judge is named as a multi-vendor routing aggregator "
+            "(OpenRouter / Together / Fireworks / Groq / Bedrock / etc.); "
+            "the underlying served model's family is not visible to the "
+            "self-agreement-bias check, so the bias signal is unreliable."
         ),
     ),
 )
@@ -651,6 +691,64 @@ def _check_dataset_leakage(
     )
 
 
+def _check_routed_provider(
+    target_provider: str,
+    judge_provider: str,
+) -> AnalyticalFinding:
+    """Reviewer P1 #6: routed-aggregator providers obscure family.
+
+    OpenRouter / Together / Fireworks / Groq / Bedrock / etc. forward
+    the request to a backend model the user picked at provider config
+    time. The self-agreement-bias check upstream collapses
+    ``Azure-OpenAI`` and ``openai`` correctly because the family map
+    knows they share weights — but it has no way to tell whether
+    ``openrouter/<some-model>`` is OpenAI-served or Anthropic-served
+    or self-hosted.
+
+    Surface this as UNRESOLVED so callers know the bias signal is
+    incomplete; the user can then either pin the underlying provider
+    explicitly or rely on the recon protocol to evidence which family
+    each call landed on.
+    """
+    trap = next(t for t in CALIBRATION_TRAPS if t.id == "routed_provider_opaque_family")
+    target_routed = _is_routed_provider(target_provider)
+    judge_routed = _is_routed_provider(judge_provider)
+    if not (target_routed or judge_routed):
+        return _finding(
+            trap,
+            label="GHOST",
+            severity=PreflightSeverity.LOW,
+            note=(
+                "Neither side names a known multi-vendor router; "
+                "self-agreement-bias check operates on the declared families."
+            ),
+        )
+    sides = []
+    if target_routed:
+        sides.append(f"target={target_provider}")
+    if judge_routed:
+        sides.append(f"judge={judge_provider}")
+    return _finding(
+        trap,
+        label="UNRESOLVED",
+        severity=PreflightSeverity.MEDIUM,
+        note=(
+            f"Routed provider in use ({', '.join(sides)}); the underlying "
+            "served-model family is not visible to the analytical pass, "
+            "so the self-agreement-bias signal may be wrong in either "
+            "direction. Resolve by either pinning the upstream provider "
+            "name (e.g. ``openai`` instead of ``openrouter`` when you "
+            "know the model is OpenAI-served) or by surfacing the "
+            "vendor-family decision in the recon protocol of the full "
+            "antemortem run."
+        ),
+        remediation=(
+            "Pin upstream provider name when known, or document the "
+            "served-model family in the run's recon protocol."
+        ),
+    )
+
+
 def _check_no_held_out(has_test_slice: bool) -> AnalyticalFinding:
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "no_held_out_slice")
     if not has_test_slice:
@@ -713,6 +811,7 @@ def analytical_preflight(
         _check_empty_reference(train_dataset, rubric),
         _check_no_held_out(has_test_slice=test_dataset is not None),
         _check_dataset_leakage(train_dataset, test_dataset),
+        _check_routed_provider(target_provider, judge_provider),
     ]
     return findings
 
