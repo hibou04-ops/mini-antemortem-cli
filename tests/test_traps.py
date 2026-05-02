@@ -59,6 +59,7 @@ def test_trap_registry_contains_all_expected():
         "empty_reference_with_strict_rubric",
         "no_held_out_slice",
         "train_test_id_overlap",
+        "routed_provider_opaque_family",
     }
 
 
@@ -326,3 +327,78 @@ def test_no_held_out_slice_ghost_when_provided():
     )
     f = _by_trap(findings, "no_held_out_slice")
     assert f.label == "GHOST"
+
+
+# ---------------------------------------------------------------------------
+# Reviewer P1 #6: routed-aggregator providers obscure family.
+# OpenRouter / Together / Fireworks / Groq / Bedrock / etc. forward to a
+# backend the family-collapse logic can't see. Surface as UNRESOLVED.
+# ---------------------------------------------------------------------------
+
+
+def test_routed_provider_unresolved_when_target_uses_openrouter():
+    findings = analytical_preflight(
+        target_provider="openrouter",
+        target_model="meta-llama/llama-3-70b",
+        judge_provider="anthropic",
+        judge_model="claude",
+        train_dataset=_dataset(n=20),
+        test_dataset=_dataset(n=15),
+        rubric=_rubric(),
+        variants=_variants(),
+    )
+    f = _by_trap(findings, "routed_provider_opaque_family")
+    assert f.label == "UNRESOLVED"
+    assert f.severity == PreflightSeverity.MEDIUM
+    assert "openrouter" in f.note.lower()
+
+
+def test_routed_provider_unresolved_when_judge_uses_bedrock():
+    findings = analytical_preflight(
+        target_provider="anthropic",
+        target_model="claude",
+        judge_provider="bedrock",
+        judge_model="anthropic.claude-3",
+        train_dataset=_dataset(n=20),
+        test_dataset=_dataset(n=15),
+        rubric=_rubric(),
+        variants=_variants(),
+    )
+    f = _by_trap(findings, "routed_provider_opaque_family")
+    assert f.label == "UNRESOLVED"
+    assert "bedrock" in f.note.lower()
+
+
+def test_routed_provider_ghost_when_neither_is_routed():
+    """First-party providers (anthropic / openai / google) on both sides
+    leave this trap as GHOST — the family-collapse logic upstream has
+    full visibility, so this trap doesn't add new signal."""
+    findings = analytical_preflight(
+        target_provider="anthropic",
+        target_model="claude",
+        judge_provider="openai",
+        judge_model="gpt",
+        train_dataset=_dataset(n=20),
+        test_dataset=_dataset(n=15),
+        rubric=_rubric(),
+        variants=_variants(),
+    )
+    f = _by_trap(findings, "routed_provider_opaque_family")
+    assert f.label == "GHOST"
+    assert f.severity == PreflightSeverity.LOW
+
+
+def test_routed_provider_canonicalization_handles_underscores():
+    """together_ai → together-ai → matches frozenset entry."""
+    findings = analytical_preflight(
+        target_provider="Together_AI",
+        target_model="meta",
+        judge_provider="anthropic",
+        judge_model="claude",
+        train_dataset=_dataset(n=20),
+        test_dataset=_dataset(n=15),
+        rubric=_rubric(),
+        variants=_variants(),
+    )
+    f = _by_trap(findings, "routed_provider_opaque_family")
+    assert f.label == "UNRESOLVED"
