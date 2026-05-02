@@ -70,7 +70,7 @@ def _variants_dict() -> dict:
 # ---------------------------------------------------------------------------
 
 
-def test_mcp_analytical_preflight_returns_seven_findings(mcp_server, tmp_path):
+def test_mcp_analytical_preflight_returns_eight_findings(mcp_server, tmp_path):
     train = tmp_path / "train.jsonl"
     test = tmp_path / "test.jsonl"
     _write_dataset(train, n=15, with_ref=True)
@@ -89,7 +89,8 @@ def test_mcp_analytical_preflight_returns_seven_findings(mcp_server, tmp_path):
     )
     # JSON-encodable through the MCP boundary:
     json.dumps(findings)
-    # All 7 traps must appear:
+    # All 8 traps must appear (8th: train_test_id_overlap, P1 #4 in
+    # the audit batch — REAL/HIGH on overlap, REAL/MEDIUM on dupes).
     expected = {
         "self_agreement_bias",
         "small_sample_kc4_power",
@@ -98,6 +99,7 @@ def test_mcp_analytical_preflight_returns_seven_findings(mcp_server, tmp_path):
         "judge_budget_too_small",
         "empty_reference_with_strict_rubric",
         "no_held_out_slice",
+        "train_test_id_overlap",
     }
     actual = {f["trap_id"] for f in findings}
     assert actual == expected
@@ -154,7 +156,7 @@ def test_mcp_analytical_preflight_handles_inline_rubric_dict(mcp_server, tmp_pat
         rubric=_rubric_dict(),  # dict, not path
         variants=_variants_dict(),  # dict, not path
     )
-    assert len(findings) == 7
+    assert len(findings) == 8
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +164,7 @@ def test_mcp_analytical_preflight_handles_inline_rubric_dict(mcp_server, tmp_pat
 # ---------------------------------------------------------------------------
 
 
-def test_mcp_list_traps_returns_all_seven(mcp_server):
+def test_mcp_list_traps_returns_all_eight(mcp_server):
     traps = mcp_server.list_traps()
     json.dumps(traps)
     ids = {t["id"] for t in traps}
@@ -174,6 +176,7 @@ def test_mcp_list_traps_returns_all_seven(mcp_server):
         "judge_budget_too_small",
         "empty_reference_with_strict_rubric",
         "no_held_out_slice",
+        "train_test_id_overlap",
     }
     for t in traps:
         assert "hypothesis" in t
