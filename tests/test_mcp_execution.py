@@ -15,6 +15,10 @@ from pathlib import Path
 
 import pytest
 
+# mcp is an optional extra; skip the whole file if it isn't installed
+# so the default `pytest -q` (without `--extra mcp`) doesn't error out.
+pytest.importorskip("mcp")
+
 from omegaprompt.domain.dataset import Dataset, DatasetItem
 from omegaprompt.domain.judge import Dimension, HardGate, JudgeRubric
 from omegaprompt.domain.params import PromptVariants
