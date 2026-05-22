@@ -15,10 +15,10 @@ def _workflow_text() -> str:
     return PUBLISH_WORKFLOW.read_text(encoding="utf-8")
 
 
-def test_publish_workflow_is_tag_or_manual_only():
+def test_publish_workflow_is_manual_only():
     text = _workflow_text()
-    assert 'tags:\n      - "v*.*.*"' in text
     assert "workflow_dispatch:" in text
+    assert "on:\n  push:" not in text
     assert "branches:" not in text
     assert "pull_request:" not in text
     assert "release_tag" in text
