@@ -1,0 +1,200 @@
+{
+  "schema": "mini-antemortem-cli.golden-cases.v1",
+  "cases": [
+    {
+      "case_id": "self_agreement_bias.real_high",
+      "mode": "analytical_preflight",
+      "trap_id": "self_agreement_bias",
+      "expected": {
+        "label": "REAL",
+        "severity": "high"
+      }
+    },
+    {
+      "case_id": "self_agreement_bias.ghost_cross_vendor",
+      "mode": "analytical_preflight",
+      "trap_id": "self_agreement_bias",
+      "expected": {
+        "label": "GHOST",
+        "severity": "low"
+      }
+    },
+    {
+      "case_id": "small_sample_kc4_power.real_high",
+      "mode": "analytical_preflight",
+      "trap_id": "small_sample_kc4_power",
+      "expected": {
+        "label": "REAL",
+        "severity": "high"
+      }
+    },
+    {
+      "case_id": "small_sample_kc4_power.ghost_adequate",
+      "mode": "analytical_preflight",
+      "trap_id": "small_sample_kc4_power",
+      "expected": {
+        "label": "GHOST",
+        "severity": "low"
+      }
+    },
+    {
+      "case_id": "variants_homogeneous.real_single_prompt",
+      "mode": "analytical_preflight",
+      "trap_id": "variants_homogeneous",
+      "expected": {
+        "label": "REAL",
+        "severity": "medium"
+      }
+    },
+    {
+      "case_id": "variants_homogeneous.ghost_diverse",
+      "mode": "analytical_preflight",
+      "trap_id": "variants_homogeneous",
+      "expected": {
+        "label": "GHOST",
+        "severity": "low"
+      }
+    },
+    {
+      "case_id": "rubric_weight_concentration.real_medium",
+      "mode": "analytical_preflight",
+      "trap_id": "rubric_weight_concentration",
+      "expected": {
+        "label": "REAL",
+        "severity": "medium"
+      }
+    },
+    {
+      "case_id": "rubric_weight_concentration.ghost_balanced",
+      "mode": "analytical_preflight",
+      "trap_id": "rubric_weight_concentration",
+      "expected": {
+        "label": "GHOST",
+        "severity": "low"
+      }
+    },
+    {
+      "case_id": "judge_budget_too_small.real_medium",
+      "mode": "analytical_preflight",
+      "trap_id": "judge_budget_too_small",
+      "expected": {
+        "label": "REAL",
+        "severity": "medium"
+      }
+    },
+    {
+      "case_id": "judge_budget_too_small.ghost_medium_budget",
+      "mode": "analytical_preflight",
+      "trap_id": "judge_budget_too_small",
+      "expected": {
+        "label": "GHOST",
+        "severity": "low"
+      }
+    },
+    {
+      "case_id": "empty_reference_with_strict_rubric.real_medium",
+      "mode": "analytical_preflight",
+      "trap_id": "empty_reference_with_strict_rubric",
+      "expected": {
+        "label": "REAL",
+        "severity": "medium"
+      }
+    },
+    {
+      "case_id": "empty_reference_with_strict_rubric.ghost_refs_present",
+      "mode": "analytical_preflight",
+      "trap_id": "empty_reference_with_strict_rubric",
+      "expected": {
+        "label": "GHOST",
+        "severity": "low"
+      }
+    },
+    {
+      "case_id": "no_held_out_slice.real_high",
+      "mode": "analytical_preflight",
+      "trap_id": "no_held_out_slice",
+      "expected": {
+        "label": "REAL",
+        "severity": "high"
+      }
+    },
+    {
+      "case_id": "no_held_out_slice.ghost_present",
+      "mode": "analytical_preflight",
+      "trap_id": "no_held_out_slice",
+      "expected": {
+        "label": "GHOST",
+        "severity": "low"
+      }
+    },
+    {
+      "case_id": "train_test_id_overlap.real_high",
+      "mode": "analytical_preflight",
+      "trap_id": "train_test_id_overlap",
+      "expected": {
+        "label": "REAL",
+        "severity": "high"
+      }
+    },
+    {
+      "case_id": "train_test_id_overlap.ghost_disjoint",
+      "mode": "analytical_preflight",
+      "trap_id": "train_test_id_overlap",
+      "expected": {
+        "label": "GHOST",
+        "severity": "low"
+      }
+    },
+    {
+      "case_id": "routed_provider_opaque_family.unresolved_openrouter",
+      "mode": "analytical_preflight",
+      "trap_id": "routed_provider_opaque_family",
+      "expected": {
+        "label": "UNRESOLVED",
+        "severity": "medium"
+      }
+    },
+    {
+      "case_id": "routed_provider_opaque_family.ghost_first_party",
+      "mode": "analytical_preflight",
+      "trap_id": "routed_provider_opaque_family",
+      "expected": {
+        "label": "GHOST",
+        "severity": "low"
+      }
+    },
+    {
+      "case_id": "policy_override.sample_power_relaxed",
+      "mode": "analytical_preflight",
+      "trap_id": "small_sample_kc4_power",
+      "expected": {
+        "label": "GHOST",
+        "severity": "low"
+      }
+    },
+    {
+      "case_id": "cli_json.demo_fixture",
+      "mode": "cli_json",
+      "expected": {
+        "return_code": 0,
+        "status": "HOLD",
+        "trap_count": 9
+      }
+    },
+    {
+      "case_id": "cli_fail_on_severity.high",
+      "mode": "cli_exit",
+      "expected": {
+        "return_code": 1
+      }
+    },
+    {
+      "case_id": "cli_list_traps.ids",
+      "mode": "cli_list_traps",
+      "expected": {
+        "return_code": 0,
+        "trap_count": 9
+      }
+    }
+  ]
+}

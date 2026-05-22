@@ -4,7 +4,7 @@ The pre-existing test_mcp_server.py covered tool registration shape and
 ``list_traps`` execution but never invoked ``analytical_preflight``
 through the MCP layer with real on-disk inputs. This file calls the
 registered MCP tool with temp-file JSONL/JSON inputs and asserts the
-executed return value contract — particularly that all 7 trap findings
+    executed return value contract — particularly that all built-in trap findings
 flow through the boundary intact.
 """
 

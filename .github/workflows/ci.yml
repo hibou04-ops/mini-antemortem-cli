@@ -28,3 +28,19 @@ jobs:
           python -m pip install -e ".[dev,mcp]"
       - name: Run pytest
         run: python -m pytest -q
+      - name: Check generated claims
+        run: python scripts/generate_readme_claims.py --check
+      - name: Check repository consistency
+        run: python scripts/check_repo_consistency.py
+      - name: Replay deterministic demo
+        run: python examples/demo_replay.py
+      - name: Run golden cases
+        run: python scripts/run_golden_cases.py --check
+      - name: Verify fixture integrity
+        run: python scripts/verify_fixture_integrity.py
+      - name: Release audit
+        run: python scripts/release_audit.py --no-network
+      - name: Build wheel
+        run: python -m build
+      - name: Wheel smoke install
+        run: python scripts/wheel_smoke_install.py dist/*.whl

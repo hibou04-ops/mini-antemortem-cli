@@ -1,0 +1,4 @@
+# Repo is LF-native. Force LF on checkout on every platform — this overrides
+# a machine-level core.autocrlf=true — so the SHA-256 fixture digests checked
+# by scripts/verify_fixture_integrity.py stay stable across OSes and CI.
+* text=auto eol=lf

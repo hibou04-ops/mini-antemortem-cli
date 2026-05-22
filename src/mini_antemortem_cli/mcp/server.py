@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Kyunghoon Gwak <hibouaile04@gmail.com>
 """FastMCP server wrapping mini-antemortem-cli's analytical preflight classifier.
 
-Deterministic, zero-LLM-cost. Catches seven well-known calibration traps
+Deterministic, zero-LLM-cost. Catches the built-in calibration traps
 before a full omegaprompt run is paid for.
 """
 
@@ -73,10 +73,11 @@ mcp_app = FastMCP(
     name="mini-antemortem-cli",
     instructions=(
         "Analytical preflight classifier for omegaprompt calibration. "
-        "Deterministic rule-based classification of seven calibration trap "
+        f"Deterministic rule-based classification of {len(CALIBRATION_TRAPS)} calibration trap "
         "patterns: self-agreement bias, small-sample KC-4 power, variant "
         "homogeneity, rubric concentration, judge budget, empty reference, "
-        "missing held-out slice. Use BEFORE paying for a full calibrate() "
+        "missing held-out slice, train/test leakage, and routed-provider "
+        "opacity. Use BEFORE paying for a full calibrate() "
         "to surface cheap-to-fix configuration issues."
     ),
 )
@@ -156,7 +157,7 @@ def analytical_preflight(
     test_dataset: str | None = None,
     judge_output_budget: str = "small",
 ) -> list[dict]:
-    """Classify the calibration config against the seven trap patterns.
+    """Classify the calibration config against the built-in trap patterns.
 
     Returns one AnalyticalFinding per matched trap (label REAL / GHOST /
     NEW / UNRESOLVED, severity, hypothesis, remediation hint, citation).
@@ -199,7 +200,7 @@ def analytical_preflight(
 
 @mcp_app.tool()
 def list_traps() -> list[dict]:
-    """Return the seven calibration trap patterns this classifier checks.
+    """Return the built-in calibration trap patterns this classifier checks.
 
     Use to introspect what `analytical_preflight` will check, or to display
     a configuration-review checklist to a human reviewer.
