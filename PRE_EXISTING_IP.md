@@ -31,7 +31,7 @@ independent timestamp witnesses.
 The following work product is declared as pre-existing personal intellectual property:
 
 1. **Analytical Preflight Classifier**: A deterministic rule-based classifier
-   over seven calibration trap patterns:
+   over source-backed calibration trap patterns:
    - Self-agreement bias (target and judge from the same vendor)
    - Small-sample KC-4 power
    - Variant homogeneity

@@ -1,0 +1,21 @@
+{
+  "dimensions": [
+    {
+      "name": "accuracy",
+      "description": "Matches the expected output.",
+      "weight": 0.75
+    },
+    {
+      "name": "clarity",
+      "description": "Response is concise and readable.",
+      "weight": 0.25
+    }
+  ],
+  "hard_gates": [
+    {
+      "name": "no_refusal",
+      "description": "Must attempt the task.",
+      "evaluator": "judge"
+    }
+  ]
+}
