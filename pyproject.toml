@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mini-antemortem-cli"
-version = "0.5.0"
+version = "0.6.0"
 description = "Analytical preflight for omegaprompt calibration: deterministic classifier over nine source-backed calibration trap patterns. Emits AnalyticalFinding records the omegaprompt pipeline consumes via derive_adaptation_plan."
 readme = "README.md"
 requires-python = ">=3.11"
