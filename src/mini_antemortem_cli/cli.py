@@ -57,8 +57,8 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="mini-antemortem-cli",
         description=(
             "Analytical preflight for omegaprompt calibration. "
-            "Classifies seven calibration trap patterns deterministically — "
-            "no API calls, no network."
+            f"Classifies {len(analytical_traps())} calibration trap patterns "
+            "deterministically — no API calls, no network."
         ),
     )
     parser.add_argument(
@@ -70,7 +70,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     check = sub.add_parser(
         "check",
-        help="Classify a calibration config against the seven traps.",
+        help=f"Classify a calibration config against the {len(analytical_traps())} traps.",
     )
     check.add_argument("--target-provider", required=True)
     check.add_argument("--target-model", default=None)
@@ -156,7 +156,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser(
         "list-traps",
-        help="List the seven built-in trap patterns and exit.",
+        help=f"List the {len(analytical_traps())} built-in trap patterns and exit.",
     )
 
     return parser

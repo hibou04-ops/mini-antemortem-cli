@@ -1,0 +1,99 @@
+# mini-antemortem-cli deterministic demo replay
+
+Inputs:
+- train: examples/demo_config/train.jsonl
+- test: examples/demo_config/test.jsonl
+- rubric: examples/demo_config/rubric.json
+- variants: examples/demo_config/variants.json
+
+$ mini-antemortem-cli check --target-provider openai --target-model gpt-4o --judge-provider openai --judge-model gpt-4o --train examples/demo_config/train.jsonl --test examples/demo_config/test.jsonl --rubric examples/demo_config/rubric.json --variants examples/demo_config/variants.json --judge-output-budget small
+exit_code: 0
+[HIGH]    REAL       self_agreement_bias
+            Target and judge are identical: openai/gpt-4o. Judge will share the target's distributional biases.
+            -> Use a different vendor or stronger model for --judge-*.
+
+[HIGH]    REAL       small_sample_kc4_power
+            Test slice has 8 items (threshold 10). Pearson correlation at n=8 has weak statistical power; KC-4 pass/fail may be random.
+            -> Expand test set to at least 20 items, or raise --min-kc4 adaptively (handled by AdaptationPlan).
+
+[LOW]     GHOST      variants_homogeneous
+            System-prompt variants span 41-55 chars (max pairwise Jaccard 17%); sufficient diversity expected.
+
+[MEDIUM]  REAL       rubric_weight_concentration
+            Dimension 'accuracy' carries 75% of the rubric weight; judge noise on that single dimension will dominate fitness.
+            -> Rebalance rubric so no single dimension exceeds ~50% weight, or explicitly declare this concentration is intentional.
+
+[LOW]     GHOST      judge_budget_too_small
+            Judge budget 'small' adequate for 3 axes.
+
+[LOW]     GHOST      empty_reference_with_strict_rubric
+            12/12 items carry reference text.
+
+[LOW]     GHOST      no_held_out_slice
+            Held-out slice provided; walk-forward will run.
+
+[LOW]     GHOST      train_test_id_overlap
+            No overlap or duplicates across 12 train + 8 test ids.
+
+[LOW]     GHOST      routed_provider_opaque_family
+            Neither side names a known multi-vendor router; self-agreement-bias check operates on the declared families.
+
+$ mini-antemortem-cli check --target-provider openai --target-model gpt-4o --judge-provider openai --judge-model gpt-4o --train examples/demo_config/train.jsonl --test examples/demo_config/test.jsonl --rubric examples/demo_config/rubric.json --variants examples/demo_config/variants.json --judge-output-budget small --json
+exit_code: 0
+{
+  "status": "HOLD",
+  "highest_severity": "high",
+  "counts": {
+    "REAL": 3,
+    "GHOST": 6,
+    "NEW": 0,
+    "UNRESOLVED": 0
+  },
+  "findings": [
+    {
+      "trap_id": "self_agreement_bias",
+      "label": "REAL",
+      "severity": "high"
+    },
+    {
+      "trap_id": "small_sample_kc4_power",
+      "label": "REAL",
+      "severity": "high"
+    },
+    {
+      "trap_id": "variants_homogeneous",
+      "label": "GHOST",
+      "severity": "low"
+    },
+    {
+      "trap_id": "rubric_weight_concentration",
+      "label": "REAL",
+      "severity": "medium"
+    },
+    {
+      "trap_id": "judge_budget_too_small",
+      "label": "GHOST",
+      "severity": "low"
+    },
+    {
+      "trap_id": "empty_reference_with_strict_rubric",
+      "label": "GHOST",
+      "severity": "low"
+    },
+    {
+      "trap_id": "no_held_out_slice",
+      "label": "GHOST",
+      "severity": "low"
+    },
+    {
+      "trap_id": "train_test_id_overlap",
+      "label": "GHOST",
+      "severity": "low"
+    },
+    {
+      "trap_id": "routed_provider_opaque_family",
+      "label": "GHOST",
+      "severity": "low"
+    }
+  ]
+}

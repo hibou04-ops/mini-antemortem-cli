@@ -17,7 +17,7 @@ the Primary Author, developed independently using personal time, equipment, and
 resources:
 
 - The mini-antemortem-cli analytical preflight classifier — deterministic
-  rule-based classification of seven calibration trap patterns
+  rule-based classification of source-backed calibration trap patterns
   (self-agreement bias, small-sample KC-4 power, variant homogeneity,
   rubric concentration, judge budget, empty reference, missing held-out slice)
 - All source code under `src/mini_antemortem_cli/`

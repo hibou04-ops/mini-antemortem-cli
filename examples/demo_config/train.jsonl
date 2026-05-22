@@ -1,0 +1,12 @@
+{"id":"t001","input":"2+2","reference":"4"}
+{"id":"t002","input":"3+5","reference":"8"}
+{"id":"t003","input":"10-7","reference":"3"}
+{"id":"t004","input":"6*6","reference":"36"}
+{"id":"t005","input":"9/3","reference":"3"}
+{"id":"t006","input":"capital of France","reference":"Paris"}
+{"id":"t007","input":"opposite of hot","reference":"cold"}
+{"id":"t008","input":"first letter of alphabet","reference":"A"}
+{"id":"t009","input":"square root of 81","reference":"9"}
+{"id":"t010","input":"5 squared","reference":"25"}
+{"id":"t011","input":"weekday after Monday","reference":"Tuesday"}
+{"id":"t012","input":"color of clear sky","reference":"blue"}

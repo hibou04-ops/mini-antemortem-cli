@@ -48,6 +48,6 @@ def test_analytical_preflight_required_args(tools):
 
 
 def test_list_traps_executes_without_llm(mcp_app):
-    """list_traps is pure deterministic — call should return seven traps."""
+    """list_traps is pure deterministic and uses no provider call."""
     result = asyncio.run(mcp_app.call_tool("list_traps", {}))
     assert result is not None

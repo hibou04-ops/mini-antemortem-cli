@@ -1,0 +1,8 @@
+{"id":"v001","input":"4+4","reference":"8"}
+{"id":"v002","input":"12-5","reference":"7"}
+{"id":"v003","input":"7*3","reference":"21"}
+{"id":"v004","input":"8/2","reference":"4"}
+{"id":"v005","input":"capital of Japan","reference":"Tokyo"}
+{"id":"v006","input":"opposite of up","reference":"down"}
+{"id":"v007","input":"last letter of alphabet","reference":"Z"}
+{"id":"v008","input":"3 cubed","reference":"27"}

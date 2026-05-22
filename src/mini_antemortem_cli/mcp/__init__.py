@@ -9,10 +9,9 @@ Run with:
 
 Two tools:
 
-* ``analytical_preflight`` — classify a calibration config against the seven
-  trap patterns (self-agreement bias, small-sample power, variant homogeneity,
-  rubric concentration, judge budget, empty reference, missing held-out).
-* ``list_traps``           — introspection: return the seven trap patterns
+* ``analytical_preflight`` — classify a calibration config against the built-in
+  trap patterns (including train/test leakage and routed-provider opacity).
+* ``list_traps``           — introspection: return the built-in trap patterns
   with their ids and hypotheses.
 
 Deterministic; zero LLM calls.

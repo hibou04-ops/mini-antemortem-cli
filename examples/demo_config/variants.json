@@ -1,0 +1,14 @@
+{
+  "system_prompts": [
+    "Answer with concise arithmetic reasoning.",
+    "Explain assumptions before solving the task.",
+    "Return a direct final answer after checking edge cases.",
+    "Use a formal rubric before writing the response."
+  ],
+  "few_shot_examples": [
+    {
+      "input": "1+1",
+      "output": "2"
+    }
+  ]
+}

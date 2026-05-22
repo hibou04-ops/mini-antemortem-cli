@@ -96,7 +96,7 @@ def test_cli_check_text_output_succeeds(tmp_path: Path, capsys):
     )
     assert rc == 0
     captured = capsys.readouterr()
-    # Each of the seven traps must appear in the human-readable output.
+    # Each built-in trap must appear in the human-readable output.
     for trap_id in (
         "self_agreement_bias",
         "small_sample_kc4_power",
@@ -126,7 +126,7 @@ def test_cli_check_json_output_machine_readable(tmp_path: Path, capsys):
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     assert "findings" in payload
-    assert len(payload["findings"]) == 9  # 8 + routed_provider_opaque_family
+    assert len(payload["findings"]) == 9
     for f in payload["findings"]:
         assert {"trap_id", "label", "hypothesis", "severity"}.issubset(f)
     # Reviewer P2: summary fields are part of the JSON envelope.
@@ -159,7 +159,7 @@ def test_cli_list_traps(capsys):
     rc = main(["list-traps"])
     assert rc == 0
     out = capsys.readouterr().out
-    # All 7 traps + their hypotheses appear.
+    # Built-in traps + their hypotheses appear.
     assert "self_agreement_bias" in out
     assert "no_held_out_slice" in out
 
