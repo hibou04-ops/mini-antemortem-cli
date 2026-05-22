@@ -41,7 +41,7 @@ from mini_antemortem_cli.traps import (
     summarize_findings,
 )
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 __all__ = [
     "CALIBRATION_TRAPS",
