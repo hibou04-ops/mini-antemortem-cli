@@ -3,7 +3,7 @@
 `omegaprompt` calibration config를 위한 결정론적 analytical preflight 도구입니다. config 입력을 읽어 9가지 source-backed built-in trap 패턴을 분류하고 `AnalyticalFinding` 레코드를 발행합니다. provider 호출도, 네트워크도 사용하지 않습니다.
 
 [![CI](https://github.com/hibou04-ops/mini-antemortem-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/hibou04-ops/mini-antemortem-cli/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/mini-antemortem-cli.svg?cb=4)](https://pypi.org/project/mini-antemortem-cli/)
+[![PyPI](https://img.shields.io/pypi/v/mini-antemortem-cli.svg?cb=5)](https://pypi.org/project/mini-antemortem-cli/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org)
 
