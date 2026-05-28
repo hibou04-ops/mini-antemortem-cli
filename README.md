@@ -3,7 +3,7 @@
 Deterministic analytical preflight for `omegaprompt` calibration configs: it reads config inputs, classifies 9 source-backed built-in trap patterns, and emits `AnalyticalFinding` records without provider calls or network access.
 
 [![CI](https://github.com/hibou04-ops/mini-antemortem-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/hibou04-ops/mini-antemortem-cli/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/mini-antemortem-cli.svg?cb=4)](https://pypi.org/project/mini-antemortem-cli/)
+[![PyPI](https://img.shields.io/pypi/v/mini-antemortem-cli.svg?cb=5)](https://pypi.org/project/mini-antemortem-cli/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org)
 
