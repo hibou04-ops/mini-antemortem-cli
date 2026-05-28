@@ -49,6 +49,15 @@ class TrapPolicy:
       absorption is limited (REAL/MEDIUM on small_sample_kc4_power).
     - ``near_duplicate_jaccard``: max pairwise prompt Jaccard above
       which variants are flagged as near-duplicates.
+    - ``length_uniform_min_jaccard``: when prompts have near-identical
+      length (``length_span_small`` branch fires), additionally require
+      pairwise Jaccard at or above this floor before emitting NEW.
+      Below this floor the prompts are vocabulary-diverse enough that
+      length uniformity alone is treated as benign. Default 0.30 keeps
+      the historical behaviour for the existing flag-NEW tests
+      (Jaccard ≈ 0.33 on "You are an assistant." vs "You are a helper.")
+      while silencing the short-distinct-vocab false positive uncovered
+      by ``benchmarks/false_positive/benign_cases.json`` (2026-05-28).
     - ``rubric_concentration_threshold``: per-dimension weight above
       which the rubric is judged single-axis-dominated.
     - ``small_budget_axis_limit``: number of rubric axes beyond which a
@@ -60,6 +69,7 @@ class TrapPolicy:
     min_test_items_high: int = 10
     min_total_items_medium: int = 20
     near_duplicate_jaccard: float = 0.70
+    length_uniform_min_jaccard: float = 0.30
     rubric_concentration_threshold: float = 0.70
     small_budget_axis_limit: int = 5
     fail_on_missing_test: bool = True
@@ -491,7 +501,12 @@ def _check_variants_homogeneity(
                 f"Jaccard below {policy.near_duplicate_jaccard:.0%}."
             ),
         )
-    if length_span_small:
+    if length_span_small and max_jaccard >= policy.length_uniform_min_jaccard:
+        # FP guard (2026-05-28): length uniformity alone is too aggressive —
+        # short prompts with disjoint vocabulary (e.g., "Translate to French."
+        # / "Outline the argument." / "Refactor the code.") get flagged
+        # despite max Jaccard = 0.0. Require enough vocabulary overlap to
+        # signal "these are minor edits of the same prompt" before NEW fires.
         return _finding(
             trap,
             label="NEW",
