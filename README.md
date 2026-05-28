@@ -3,7 +3,7 @@
 Deterministic analytical preflight for `omegaprompt` calibration configs: it reads config inputs, classifies 9 source-backed built-in trap patterns, and emits `AnalyticalFinding` records without provider calls or network access.
 
 [![CI](https://github.com/hibou04-ops/mini-antemortem-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/hibou04-ops/mini-antemortem-cli/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/mini-antemortem-cli.svg?cb=3)](https://pypi.org/project/mini-antemortem-cli/)
+[![PyPI](https://img.shields.io/pypi/v/mini-antemortem-cli.svg?cb=4)](https://pypi.org/project/mini-antemortem-cli/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org)
 
@@ -21,6 +21,7 @@ Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · 
 - Claim ledger: [English](docs/claim_ledger.md) / [Korean](docs/claim_ledger_kr.md)
 - Examples and deterministic demo: [English](docs/examples.md) / [Korean](docs/examples_kr.md)
 - Simpler README: [English](EASY_README.md) / [Korean](EASY_README_KR.md)
+- Korean main README: [README_KR.md](README_KR.md)
 - CLI exit codes: [docs/cli_exit_codes.md](docs/cli_exit_codes.md)
 - Release checklist: [docs/release_checklist.md](docs/release_checklist.md)
 - Post-release verification: [docs/post_release_verification.md](docs/post_release_verification.md)
@@ -38,10 +39,15 @@ python scripts/generate_readme_claims.py --check
 python scripts/check_repo_consistency.py
 python examples/demo_replay.py
 python scripts/run_golden_cases.py --check
+python scripts/run_false_positive_audit.py --check
 python scripts/verify_fixture_integrity.py
 ```
 
-These commands are no-network by design. They verify that public claims, generated docs, demo fixtures, golden cases, and artifact digests still match local source of truth.
+These commands are no-network by design. They verify that public claims, generated docs, demo fixtures, golden cases, false-positive corpus, and artifact digests still match local source of truth.
+
+## False-Positive Audit
+
+`benchmarks/false_positive/benign_cases.json` carries a labeled corpus of configurations (45 cases across all 9 traps, with both nominal and boundary inputs) that the analytical preflight must *not* flag. `scripts/run_false_positive_audit.py` replays the corpus through the same deterministic classifier and reports the per-trap false-positive rate; the same script runs as a CI gate, so a regression that flips a benign case to `REAL` / `NEW` / `UNRESOLVED` fails the build. As of 0.8.0 the measured rate is 0/45 (0.00%). Known classifier limitations can be recorded in the manifest's `acknowledged_false_positives` block so the gate distinguishes regressions from documented behavior.
 
 ## Deterministic Demo
 

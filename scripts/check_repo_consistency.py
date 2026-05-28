@@ -32,6 +32,7 @@ REQUIRED_README_LINKS = (
 
 PUBLIC_DOCS = (
     "README.md",
+    "README_KR.md",
     "EASY_README.md",
     "EASY_README_KR.md",
 )
@@ -115,6 +116,7 @@ def run_checks(root: Path = ROOT) -> list[str]:
     )
     for rel, text in (
         ("README.md", readme),
+        ("README_KR.md", _read(root, "README_KR.md")),
         ("EASY_README.md", _read(root, "EASY_README.md")),
         ("EASY_README_KR.md", _read(root, "EASY_README_KR.md")),
         ("src/mini_antemortem_cli/__init__.py", init_text),

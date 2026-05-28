@@ -1,6 +1,6 @@
 # mini-antemortem-cli - 쉬운 설명
 
-[README.md](README.md)의 압축 버전입니다. English easy version: [EASY_README.md](EASY_README.md).
+[README.md](README.md)의 압축 버전입니다. English easy version: [EASY_README.md](EASY_README.md). 한국어 메인 README: [README_KR.md](README_KR.md).
 
 ## 이게 뭔가요?
 
