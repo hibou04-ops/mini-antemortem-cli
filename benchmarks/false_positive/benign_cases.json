@@ -1,0 +1,485 @@
+{
+  "schema": "mini-antemortem-cli.false-positive.v1",
+  "description": "Labeled benign configurations used to measure the analytical-preflight false-positive rate. Each case asserts the named trap_id should NOT fire (label in {GHOST}). Findings with label REAL, NEW, or UNRESOLVED on these cases count as false positives. Baseline matches scripts/run_golden_cases.py::_base_kwargs(); the `overrides` block layers per-case deviations on top.",
+  "baseline": {
+    "target_provider": "openai",
+    "target_model": "gpt-4o",
+    "judge_provider": "anthropic",
+    "judge_model": "claude-opus-4-7",
+    "train_dataset": {"prefix": "t", "n": 20, "with_ref": true},
+    "test_dataset": {"prefix": "v", "n": 20, "with_ref": true},
+    "rubric": {"weights": {"accuracy": 0.5, "clarity": 0.5}, "needs_reference": false, "gates": 1},
+    "variants": {"prompts": [
+      "Answer with concise arithmetic reasoning.",
+      "Explain assumptions before solving the task.",
+      "Return a direct final answer after checking edge cases.",
+      "Use a formal rubric before writing the response."
+    ]},
+    "judge_output_budget": "medium"
+  },
+  "expected_negative_labels": ["GHOST"],
+  "acknowledged_false_positives": [],
+  "cases": [
+    {
+      "case_id": "self_agreement_bias.benign_cross_vendor_openai_anthropic",
+      "trap_id": "self_agreement_bias",
+      "ground_truth": "benign",
+      "rationale": "Different first-party vendors; bias signal should be absent.",
+      "overrides": {}
+    },
+    {
+      "case_id": "self_agreement_bias.benign_anthropic_google",
+      "trap_id": "self_agreement_bias",
+      "ground_truth": "benign",
+      "rationale": "Anthropic target with Google judge — distinct families.",
+      "overrides": {
+        "target_provider": "anthropic",
+        "target_model": "claude-opus-4-7",
+        "judge_provider": "google",
+        "judge_model": "gemini-1.5-pro"
+      }
+    },
+    {
+      "case_id": "self_agreement_bias.benign_mixed_case_canonicalization",
+      "trap_id": "self_agreement_bias",
+      "ground_truth": "benign",
+      "rationale": "Canonicalization (lowercase/trim/underscore-to-dash) must not collapse distinct vendors into one.",
+      "overrides": {
+        "target_provider": "OpenAI",
+        "target_model": "GPT-4o",
+        "judge_provider": "Anthropic",
+        "judge_model": "Claude-Opus-4-7"
+      }
+    },
+    {
+      "case_id": "self_agreement_bias.benign_google_openai",
+      "trap_id": "self_agreement_bias",
+      "ground_truth": "benign",
+      "rationale": "Google target with OpenAI judge — distinct families.",
+      "overrides": {
+        "target_provider": "google",
+        "target_model": "gemini-1.5-pro",
+        "judge_provider": "openai",
+        "judge_model": "gpt-4o"
+      }
+    },
+
+    {
+      "case_id": "small_sample_kc4_power.benign_well_above_thresholds",
+      "trap_id": "small_sample_kc4_power",
+      "ground_truth": "benign",
+      "rationale": "train=20, test=20: both well above min_test_items_high=10 and total>=20.",
+      "overrides": {}
+    },
+    {
+      "case_id": "small_sample_kc4_power.benign_at_lower_boundary",
+      "trap_id": "small_sample_kc4_power",
+      "ground_truth": "benign",
+      "rationale": "test=10 (exact min_test_items_high boundary, not < 10) and total=20 (exact min_total_items_medium boundary, not < 20).",
+      "overrides": {
+        "train_dataset": {"prefix": "t", "n": 10, "with_ref": true},
+        "test_dataset": {"prefix": "v", "n": 10, "with_ref": true}
+      }
+    },
+    {
+      "case_id": "small_sample_kc4_power.benign_large_corpus",
+      "trap_id": "small_sample_kc4_power",
+      "ground_truth": "benign",
+      "rationale": "train=100, test=50: ample power.",
+      "overrides": {
+        "train_dataset": {"prefix": "t", "n": 100, "with_ref": true},
+        "test_dataset": {"prefix": "v", "n": 50, "with_ref": true}
+      }
+    },
+    {
+      "case_id": "small_sample_kc4_power.benign_test_at_floor_train_big",
+      "trap_id": "small_sample_kc4_power",
+      "ground_truth": "benign",
+      "rationale": "test=10 floor, train=50: should pass on both conditions.",
+      "overrides": {
+        "train_dataset": {"prefix": "t", "n": 50, "with_ref": true},
+        "test_dataset": {"prefix": "v", "n": 10, "with_ref": true}
+      }
+    },
+
+    {
+      "case_id": "variants_homogeneous.benign_four_distinct_framings",
+      "trap_id": "variants_homogeneous",
+      "ground_truth": "benign",
+      "rationale": "Four prompts varying in role framing, instruction style, and task decomposition.",
+      "overrides": {}
+    },
+    {
+      "case_id": "variants_homogeneous.benign_three_long_distinct_prompts",
+      "trap_id": "variants_homogeneous",
+      "ground_truth": "benign",
+      "rationale": "Three substantially different prompts (different topics, lengths, framings).",
+      "overrides": {
+        "variants": {"prompts": [
+          "Adopt the persona of a meticulous editor. Read each sentence twice, mark ambiguous pronouns, and rewrite for clarity. Preserve the original voice unless asked to change it.",
+          "Solve step by step. Show your work as numbered reasoning steps. After each step, ask whether the previous step still holds.",
+          "Generate three candidate answers internally. Score each on correctness and brevity. Output only the highest-scoring candidate without revealing the alternatives."
+        ]}
+      }
+    },
+    {
+      "case_id": "variants_homogeneous.benign_five_varied_lengths",
+      "trap_id": "variants_homogeneous",
+      "ground_truth": "benign",
+      "rationale": "Five prompts ranging 80 to 800 chars, distinct vocab.",
+      "overrides": {
+        "variants": {"prompts": [
+          "Answer concisely. No filler.",
+          "Begin by restating the question. Then enumerate constraints. Solve.",
+          "Adopt a Socratic stance: pose three sub-questions, answer each, synthesize the final answer at the end.",
+          "Use a five-paragraph academic structure: hypothesis, evidence A, evidence B, counter-evidence, conclusion. Include at least one citation marker per paragraph even if the underlying source is the user's prompt itself.",
+          "First identify the genre of the question (factual, reasoning, opinion, code). For factual queries cite primary sources. For reasoning, derive from first principles. For opinions, present at least two sides before declaring a stance. For code, provide a runnable snippet plus an example invocation and the expected output."
+        ]}
+      }
+    },
+    {
+      "case_id": "variants_homogeneous.benign_common_role_distinct_tasks",
+      "trap_id": "variants_homogeneous",
+      "ground_truth": "benign",
+      "rationale": "Realistic case: prompts share a brief role intro but diverge in body. Jaccard should stay well under 0.70.",
+      "overrides": {
+        "variants": {"prompts": [
+          "You are an assistant. Translate the input from French to English, preserving idioms.",
+          "You are an assistant. Summarize the input in three bullet points highlighting causal claims.",
+          "You are an assistant. Critique the input as a peer reviewer would: identify methodological weaknesses and propose remedies.",
+          "You are an assistant. Convert the input into a structured JSON object with fields title, date, actors, outcome."
+        ]}
+      }
+    },
+    {
+      "case_id": "variants_homogeneous.benign_short_distinct_vocab",
+      "trap_id": "variants_homogeneous",
+      "ground_truth": "benign",
+      "rationale": "Three short prompts with non-overlapping verbs and nouns.",
+      "overrides": {
+        "variants": {"prompts": [
+          "Translate to French.",
+          "Outline the argument.",
+          "Refactor the code."
+        ]}
+      }
+    },
+
+    {
+      "case_id": "rubric_weight_concentration.benign_balanced_two_dims",
+      "trap_id": "rubric_weight_concentration",
+      "ground_truth": "benign",
+      "rationale": "Two equally weighted dimensions; max weight = 0.50.",
+      "overrides": {}
+    },
+    {
+      "case_id": "rubric_weight_concentration.benign_three_dims_moderate",
+      "trap_id": "rubric_weight_concentration",
+      "ground_truth": "benign",
+      "rationale": "Three dimensions with max weight 0.40.",
+      "overrides": {
+        "rubric": {"weights": {"accuracy": 0.4, "clarity": 0.3, "completeness": 0.3}, "needs_reference": false, "gates": 1}
+      }
+    },
+    {
+      "case_id": "rubric_weight_concentration.benign_four_dims_diffuse",
+      "trap_id": "rubric_weight_concentration",
+      "ground_truth": "benign",
+      "rationale": "Four dimensions with max weight 0.30.",
+      "overrides": {
+        "rubric": {"weights": {"accuracy": 0.3, "clarity": 0.3, "completeness": 0.2, "tone": 0.2}, "needs_reference": false, "gates": 1}
+      }
+    },
+    {
+      "case_id": "rubric_weight_concentration.benign_below_threshold_boundary",
+      "trap_id": "rubric_weight_concentration",
+      "ground_truth": "benign",
+      "rationale": "Max weight 0.69 — just below the 0.70 threshold.",
+      "overrides": {
+        "rubric": {"weights": {"accuracy": 0.69, "clarity": 0.31}, "needs_reference": false, "gates": 1}
+      }
+    },
+
+    {
+      "case_id": "judge_budget_too_small.benign_medium_budget_many_axes",
+      "trap_id": "judge_budget_too_small",
+      "ground_truth": "benign",
+      "rationale": "Medium budget with many axes; trap should ignore.",
+      "overrides": {
+        "rubric": {"weights": {"d1": 0.2, "d2": 0.2, "d3": 0.2, "d4": 0.2, "d5": 0.2}, "needs_reference": false, "gates": 3},
+        "judge_output_budget": "medium"
+      }
+    },
+    {
+      "case_id": "judge_budget_too_small.benign_large_budget_many_axes",
+      "trap_id": "judge_budget_too_small",
+      "ground_truth": "benign",
+      "rationale": "Large budget with many axes; trap should ignore.",
+      "overrides": {
+        "rubric": {"weights": {"d1": 0.2, "d2": 0.2, "d3": 0.2, "d4": 0.2, "d5": 0.2}, "needs_reference": false, "gates": 3},
+        "judge_output_budget": "large"
+      }
+    },
+    {
+      "case_id": "judge_budget_too_small.benign_small_budget_few_axes",
+      "trap_id": "judge_budget_too_small",
+      "ground_truth": "benign",
+      "rationale": "Small budget but only 3 axes (2 dims + 1 gate) — below limit of 5.",
+      "overrides": {
+        "judge_output_budget": "small"
+      }
+    },
+    {
+      "case_id": "judge_budget_too_small.benign_small_budget_at_boundary",
+      "trap_id": "judge_budget_too_small",
+      "ground_truth": "benign",
+      "rationale": "Small budget with exactly 5 axes (4 dims + 1 gate) — at the limit, not over.",
+      "overrides": {
+        "rubric": {"weights": {"d1": 0.25, "d2": 0.25, "d3": 0.25, "d4": 0.25}, "needs_reference": false, "gates": 1},
+        "judge_output_budget": "small"
+      }
+    },
+    {
+      "case_id": "judge_budget_too_small.benign_enum_form_medium",
+      "trap_id": "judge_budget_too_small",
+      "ground_truth": "benign",
+      "rationale": "Budget passed as enum-like string 'MEDIUM' — canonicalization must not misclassify.",
+      "overrides": {
+        "rubric": {"weights": {"d1": 0.2, "d2": 0.2, "d3": 0.2, "d4": 0.2, "d5": 0.2}, "needs_reference": false, "gates": 3},
+        "judge_output_budget": "MEDIUM"
+      }
+    },
+
+    {
+      "case_id": "empty_reference_with_strict_rubric.benign_refs_present_gt_rubric",
+      "trap_id": "empty_reference_with_strict_rubric",
+      "ground_truth": "benign",
+      "rationale": "Dataset has references and rubric implies ground truth — fully consistent.",
+      "overrides": {
+        "rubric": {"weights": {"accuracy": 1.0}, "needs_reference": true, "gates": 1}
+      }
+    },
+    {
+      "case_id": "empty_reference_with_strict_rubric.benign_no_refs_self_contained",
+      "trap_id": "empty_reference_with_strict_rubric",
+      "ground_truth": "benign",
+      "rationale": "Dataset has no references AND rubric is self-contained — no ground-truth anchor required.",
+      "overrides": {
+        "train_dataset": {"prefix": "t", "n": 20, "with_ref": false},
+        "test_dataset": {"prefix": "v", "n": 20, "with_ref": false}
+      }
+    },
+    {
+      "case_id": "empty_reference_with_strict_rubric.benign_refs_present_self_contained",
+      "trap_id": "empty_reference_with_strict_rubric",
+      "ground_truth": "benign",
+      "rationale": "Refs present but rubric self-contained — over-specified but not a trap.",
+      "overrides": {}
+    },
+    {
+      "case_id": "empty_reference_with_strict_rubric.benign_no_refs_politeness_rubric",
+      "trap_id": "empty_reference_with_strict_rubric",
+      "ground_truth": "benign",
+      "rationale": "Self-contained rubric scoring politeness/tone — no ground truth needed.",
+      "overrides": {
+        "train_dataset": {"prefix": "t", "n": 20, "with_ref": false},
+        "test_dataset": {"prefix": "v", "n": 20, "with_ref": false},
+        "rubric": {"weights": {"politeness": 0.5, "tone": 0.5}, "needs_reference": false, "gates": 1}
+      }
+    },
+
+    {
+      "case_id": "no_held_out_slice.benign_small_test_present",
+      "trap_id": "no_held_out_slice",
+      "ground_truth": "benign",
+      "rationale": "Any test slice satisfies the trap, regardless of size.",
+      "overrides": {
+        "test_dataset": {"prefix": "v", "n": 10, "with_ref": true}
+      }
+    },
+    {
+      "case_id": "no_held_out_slice.benign_medium_test_present",
+      "trap_id": "no_held_out_slice",
+      "ground_truth": "benign",
+      "rationale": "Standard 20-item test slice.",
+      "overrides": {}
+    },
+    {
+      "case_id": "no_held_out_slice.benign_large_test_present",
+      "trap_id": "no_held_out_slice",
+      "ground_truth": "benign",
+      "rationale": "100-item test slice.",
+      "overrides": {
+        "test_dataset": {"prefix": "v", "n": 100, "with_ref": true}
+      }
+    },
+
+    {
+      "case_id": "train_test_id_overlap.benign_disjoint_default_ids",
+      "trap_id": "train_test_id_overlap",
+      "ground_truth": "benign",
+      "rationale": "Default prefixed ids (t000..t019 vs v000..v019) are disjoint and unique.",
+      "overrides": {}
+    },
+    {
+      "case_id": "train_test_id_overlap.benign_disjoint_distinct_namespaces",
+      "trap_id": "train_test_id_overlap",
+      "ground_truth": "benign",
+      "rationale": "Different naming schemes (A001.. vs B001..) — clearly disjoint.",
+      "overrides": {
+        "train_dataset": {"prefix": "A", "n": 25, "with_ref": true},
+        "test_dataset": {"prefix": "B", "n": 25, "with_ref": true}
+      }
+    },
+    {
+      "case_id": "train_test_id_overlap.benign_large_disjoint",
+      "trap_id": "train_test_id_overlap",
+      "ground_truth": "benign",
+      "rationale": "Larger disjoint sets (50/30) — no overlap, no duplicates.",
+      "overrides": {
+        "train_dataset": {"prefix": "tr", "n": 50, "with_ref": true},
+        "test_dataset": {"prefix": "te", "n": 30, "with_ref": true}
+      }
+    },
+    {
+      "case_id": "train_test_id_overlap.benign_minimal_disjoint",
+      "trap_id": "train_test_id_overlap",
+      "ground_truth": "benign",
+      "rationale": "Single item in each slice, distinct ids.",
+      "overrides": {
+        "train_dataset": {"prefix": "single_train_", "n": 1, "with_ref": true},
+        "test_dataset": {"prefix": "single_test_", "n": 1, "with_ref": true}
+      }
+    },
+
+    {
+      "case_id": "routed_provider_opaque_family.benign_both_first_party",
+      "trap_id": "routed_provider_opaque_family",
+      "ground_truth": "benign",
+      "rationale": "openai + anthropic — both first-party, neither in the routed aggregator set.",
+      "overrides": {}
+    },
+    {
+      "case_id": "routed_provider_opaque_family.benign_google_anthropic",
+      "trap_id": "routed_provider_opaque_family",
+      "ground_truth": "benign",
+      "rationale": "google + anthropic — both first-party.",
+      "overrides": {
+        "target_provider": "google",
+        "target_model": "gemini-1.5-pro"
+      }
+    },
+    {
+      "case_id": "routed_provider_opaque_family.benign_azure_openai_anthropic",
+      "trap_id": "routed_provider_opaque_family",
+      "ground_truth": "benign",
+      "rationale": "azure-openai is in the family map but NOT in the routed aggregator set — should not surface as routed.",
+      "overrides": {
+        "target_provider": "azure-openai",
+        "target_model": "gpt-4o"
+      }
+    },
+    {
+      "case_id": "routed_provider_opaque_family.benign_mixed_case",
+      "trap_id": "routed_provider_opaque_family",
+      "ground_truth": "benign",
+      "rationale": "Mixed-case first-party names; canonicalization must not coincidentally hit a routed-aggregator entry.",
+      "overrides": {
+        "target_provider": "OpenAI",
+        "judge_provider": "Anthropic"
+      }
+    },
+
+    {
+      "case_id": "variants_homogeneous.boundary_short_prompts_jaccard_below_floor",
+      "trap_id": "variants_homogeneous",
+      "ground_truth": "benign",
+      "rationale": "Three short prompts, length span ~3 chars, max pairwise Jaccard ~0.14 (single shared token 'quickly'). Below length_uniform_min_jaccard=0.30, so the length-uniformity branch must not fire. Regression test for the 2026-05-28 guard.",
+      "overrides": {
+        "variants": {"prompts": [
+          "Quickly write the summary",
+          "Quickly draft a response",
+          "Quickly compose final text"
+        ]}
+      }
+    },
+    {
+      "case_id": "variants_homogeneous.boundary_jaccard_just_below_near_duplicate",
+      "trap_id": "variants_homogeneous",
+      "ground_truth": "benign",
+      "rationale": "Three prompts with max pairwise Jaccard ~0.667 (just below near_duplicate_jaccard=0.70) AND length span ~48 chars (length_span_small=False). Tests strict-greater-than semantics of the near-duplicate threshold without tripping the length-uniformity branch.",
+      "overrides": {
+        "variants": {"prompts": [
+          "Analyze the input data and provide accurate clean concise answer.",
+          "Analyze the input data and provide accurate thorough detailed answer.",
+          "Be brief and direct."
+        ]}
+      }
+    },
+    {
+      "case_id": "variants_homogeneous.boundary_four_prompts_uniform_length_moderate_jaccard",
+      "trap_id": "variants_homogeneous",
+      "ground_truth": "benign",
+      "rationale": "Four prompts of similar length (~78 chars, span ~9) with max pairwise Jaccard ~0.50. length_span_small=False because len(prompts)=4 > 3. Verifies that >3 variants short-circuits the length-uniformity branch even with moderate vocabulary overlap.",
+      "overrides": {
+        "variants": {"prompts": [
+          "Produce a detailed summary highlighting the most important key points and ideas",
+          "Produce a quick summary noting the most relevant main ideas and points",
+          "Produce a careful summary covering the most critical key concepts and ideas",
+          "Produce a thorough summary listing the most prominent main points and topics"
+        ]}
+      }
+    },
+
+    {
+      "case_id": "rubric_weight_concentration.boundary_max_at_exact_threshold",
+      "trap_id": "rubric_weight_concentration",
+      "ground_truth": "benign",
+      "rationale": "max_w=0.70 exactly. Trap uses strict greater-than (`max_w > 0.70`), so equality is benign — verifies boundary semantics.",
+      "overrides": {
+        "rubric": {"weights": {"accuracy": 0.7, "clarity": 0.3}, "needs_reference": false, "gates": 1}
+      }
+    },
+    {
+      "case_id": "rubric_weight_concentration.boundary_max_at_65_pct",
+      "trap_id": "rubric_weight_concentration",
+      "ground_truth": "benign",
+      "rationale": "max_w=0.65, comfortably below threshold but still highly concentrated. Confirms the threshold isn't accidentally tighter than declared.",
+      "overrides": {
+        "rubric": {"weights": {"accuracy": 0.65, "clarity": 0.35}, "needs_reference": false, "gates": 1}
+      }
+    },
+
+    {
+      "case_id": "small_sample_kc4_power.boundary_test_at_floor_plus_one",
+      "trap_id": "small_sample_kc4_power",
+      "ground_truth": "benign",
+      "rationale": "test=11 (one above min_test_items_high=10), train=10, total=21 (one above min_total_items_medium=20). Tests strict-less-than on both thresholds.",
+      "overrides": {
+        "train_dataset": {"prefix": "t", "n": 10, "with_ref": true},
+        "test_dataset": {"prefix": "v", "n": 11, "with_ref": true}
+      }
+    },
+
+    {
+      "case_id": "judge_budget_too_small.boundary_axes_at_exact_limit_small_budget",
+      "trap_id": "judge_budget_too_small",
+      "ground_truth": "benign",
+      "rationale": "3 dims + 2 judge gates = 5 axes = small_budget_axis_limit exactly. Trap uses strict greater-than, so equality is benign.",
+      "overrides": {
+        "rubric": {"weights": {"d1": 0.4, "d2": 0.4, "d3": 0.2}, "needs_reference": false, "gates": 2},
+        "judge_output_budget": "small"
+      }
+    },
+    {
+      "case_id": "judge_budget_too_small.boundary_five_dims_small_budget",
+      "trap_id": "judge_budget_too_small",
+      "ground_truth": "benign",
+      "rationale": "5 dims + 0 gates = 5 axes with small budget. Confirms axis arithmetic and gate-evaluator filter agree on the limit.",
+      "overrides": {
+        "rubric": {"weights": {"d1": 0.2, "d2": 0.2, "d3": 0.2, "d4": 0.2, "d5": 0.2}, "needs_reference": false, "gates": 0},
+        "judge_output_budget": "small"
+      }
+    }
+  ]
+}
