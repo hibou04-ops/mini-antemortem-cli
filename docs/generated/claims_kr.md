@@ -36,6 +36,7 @@
 |---|---|
 | Deterministic tests | `python -m pytest -q` |
 | Golden cases | `python scripts/run_golden_cases.py --check` |
+| False-positive audit | `python scripts/run_false_positive_audit.py --check` |
 | Repository self-check | `python scripts/check_repo_consistency.py` |
 | Generated claims check | `python scripts/generate_readme_claims.py --check` |
 | Fixture integrity | `python scripts/verify_fixture_integrity.py` |

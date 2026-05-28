@@ -8,3 +8,6 @@ build/
 venv/
 .mypy_cache/
 .ruff_cache/
+
+# Generated CI reports (written by audit scripts on each run).
+benchmarks/false_positive/last_report.json
