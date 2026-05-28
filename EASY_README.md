@@ -1,6 +1,6 @@
 # mini-antemortem-cli - Easy Start
 
-Short version of [README.md](README.md). Korean easy version: [EASY_README_KR.md](EASY_README_KR.md).
+Short version of [README.md](README.md). Korean easy version: [EASY_README_KR.md](EASY_README_KR.md). Korean main README: [README_KR.md](README_KR.md).
 
 ## What Is This?
 
