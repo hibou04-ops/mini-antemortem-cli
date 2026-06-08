@@ -133,7 +133,7 @@
       "trap_id": "train_test_id_overlap",
       "expected": {
         "label": "REAL",
-        "severity": "high"
+        "severity": "blocker"
       }
     },
     {

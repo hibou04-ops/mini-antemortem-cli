@@ -10,7 +10,7 @@ These claims are generated from local repository sources: `pyproject.toml`,
 | PyPI distribution | `mini-antemortem-cli` |
 | Install command | `pip install mini-antemortem-cli` |
 | Python import package | `mini_antemortem_cli` |
-| Package version | `0.8.0` |
+| Package version | `0.9.0` |
 | CLI command | `mini-antemortem-cli` |
 | CLI subcommands | `check, list-traps` |
 | MCP extra | `mcp` |

@@ -8,6 +8,15 @@
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
+## 0.9.0의 새로운 점
+
+- 텍스트 출력이 이제 grep 친화적 `Summary:` 한 줄로 시작합니다(native status: PASS / ADVISORY / HOLD / BLOCK / NEEDS_MORE_EVIDENCE).
+- high-signal finding이 발화한 계산값을 `cite` 필드(config-referenced)에 담습니다.
+- 잘못된 입력 파일은 깔끔한 한 줄 오류로 보고하고 종료 코드 `2`로 종료합니다.
+- `list-traps --json`으로 `{id, hypothesis}` 배열을 출력합니다.
+- train/test ID 정확 겹침은 이제 `BLOCKER`로 발화합니다(이전 high). `--fail-on-severity high`는 여전히 이를 잡습니다.
+- `4 - Beta`로 이동, 이후 surface는 additive-only.
+
 ## 설치
 
 ```bash

@@ -8,6 +8,15 @@ Short version of [README.md](README.md). Korean easy version: [EASY_README_KR.md
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
+## What's New in 0.9.0
+
+- Text output now leads with one grep-friendly `Summary:` line (native status: PASS / ADVISORY / HOLD / BLOCK / NEEDS_MORE_EVIDENCE).
+- High-signal findings carry the value the trap fired on in a `cite` field (config-referenced).
+- Bad input files report a clean one-line error and exit code `2` (no traceback).
+- `list-traps --json` emits a `{id, hypothesis}` array.
+- Exact train/test ID overlap now fires at `BLOCKER` (was high). `--fail-on-severity high` still catches it.
+- Moves to `4 - Beta`, with an additive-only commitment to the surface going forward.
+
 ## Install
 
 ```bash

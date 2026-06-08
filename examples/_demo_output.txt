@@ -8,6 +8,8 @@ Inputs:
 
 $ mini-antemortem-cli check --target-provider openai --target-model gpt-4o --judge-provider openai --judge-model gpt-4o --train examples/demo_config/train.jsonl --test examples/demo_config/test.jsonl --rubric examples/demo_config/rubric.json --variants examples/demo_config/variants.json --judge-output-budget small
 exit_code: 0
+Summary: HOLD [high] - 3 REAL, 6 GHOST, 0 NEW, 0 UNRESOLVED
+
 [HIGH]    REAL       self_agreement_bias
             Target and judge are identical: openai/gpt-4o. Judge will share the target's distributional biases.
             -> Use a different vendor or stronger model for --judge-*.
