@@ -13,6 +13,10 @@ pip install mini-antemortem-cli
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
+## What's New in 0.9.1
+
+- **One-line config-load errors (fix).** A bad-schema `--train` / `--test` row made `Dataset.from_jsonl` raise a multi-line pydantic `ValueError`, so the stderr message spanned several lines — but the docs promised one line. It is now truncated to a single line. Exit code is unchanged (`2`); a regression test locks the single-line behavior.
+
 ## What's New in 0.9.0
 
 - **Text-mode verdict line (C1):** the default (text) output of `check` now leads with one grep-friendly `Summary:` line that surfaces the existing native 5-level status (PASS / ADVISORY / HOLD / BLOCK / NEEDS_MORE_EVIDENCE). The core verdict — previously visible only to `--json` consumers — is now visible to the default user. `... check | head -1` becomes the CI signal.

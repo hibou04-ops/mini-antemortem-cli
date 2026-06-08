@@ -8,6 +8,10 @@ Short version of [README.md](README.md). Korean easy version: [EASY_README_KR.md
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
+## What's New in 0.9.1
+
+- Bad-input error messages are now a single line (schema errors used to span several lines). Exit code is still `2`.
+
 ## What's New in 0.9.0
 
 - Text output now leads with one grep-friendly `Summary:` line (native status: PASS / ADVISORY / HOLD / BLOCK / NEEDS_MORE_EVIDENCE).

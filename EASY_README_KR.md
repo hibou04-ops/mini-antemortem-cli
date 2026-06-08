@@ -8,6 +8,10 @@
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
+## 0.9.1의 새로운 점
+
+- 잘못된 입력 오류 메시지가 이제 한 줄입니다(스키마 오류 시 여러 줄이던 것 수정). 종료 코드는 그대로 `2`.
+
 ## 0.9.0의 새로운 점
 
 - 텍스트 출력이 이제 grep 친화적 `Summary:` 한 줄로 시작합니다(native status: PASS / ADVISORY / HOLD / BLOCK / NEEDS_MORE_EVIDENCE).
