@@ -314,6 +314,30 @@ def test_cli_bad_schema_exits_2_and_names_file(tmp_path: Path, capsys):
     assert "bad_variants.json" in err
 
 
+def test_cli_bad_schema_train_value_error_stays_one_line(tmp_path: Path, capsys):
+    """A bad-schema train ROW makes Dataset.from_jsonl re-raise a multi-line
+    pydantic ValueError. The loader must still exit 2 AND keep stderr to a single
+    line (the docstring + docs/cli_exit_codes.md promise one line)."""
+    _, test, rubric, variants = _build_inputs(tmp_path)
+    bad_train = tmp_path / "bad_train.jsonl"
+    bad_train.write_text('{"id": "t0"}\n', encoding="utf-8")  # missing required "input"
+    rc = main(
+        [
+            "check",
+            "--target-provider", "openai",
+            "--judge-provider", "anthropic",
+            "--train", str(bad_train),
+            "--test", str(test),
+            "--rubric", str(rubric),
+            "--variants", str(variants),
+        ]
+    )
+    assert rc == 2
+    err = capsys.readouterr().err.strip()
+    assert "bad_train.jsonl" in err
+    assert "\n" not in err, f"stderr must be one line, got:\n{err}"
+
+
 # ---------------------------------------------------------------------------
 # H1 (0.9.0): list-traps --json emits an array; text stays the default.
 # ---------------------------------------------------------------------------
