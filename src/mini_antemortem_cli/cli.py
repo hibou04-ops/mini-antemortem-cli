@@ -249,8 +249,12 @@ def _load_input(label: str, path: Path, loader):  # type: ignore[no-untyped-def]
             f"{label} file failed schema validation: {path} (ValidationError)"
         ) from exc
     except ValueError as exc:
+        # Keep stderr to one line: Dataset.from_jsonl re-raises a bad-schema row as a
+        # pydantic ValueError whose str() is a multi-line report. The docstring +
+        # docs/cli_exit_codes.md promise a one-line message, so take the first line.
+        detail = str(exc).splitlines()[0] if str(exc) else exc.__class__.__name__
         raise _InputLoadError(
-            f"{label} file is malformed or schema-invalid: {path} (ValueError: {exc})"
+            f"{label} file is malformed or schema-invalid: {path} (ValueError: {detail})"
         ) from exc
 
 
