@@ -13,6 +13,10 @@ pip install mini-antemortem-cli
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` (`mini-antemortem-cli[mcp]`)
 
+## 0.9.1의 새로운 점
+
+- **설정 로드 오류 한 줄 보장 (수정).** bad-schema `--train` / `--test` 행은 `Dataset.from_jsonl`가 다줄 pydantic `ValueError`로 re-raise해서 stderr가 여러 줄로 나왔습니다 — 문서는 한 줄을 약속했습니다. 이제 첫 줄만 출력합니다. 종료 코드는 그대로(`2`)이며 회귀 테스트로 단일 줄 동작을 잠갔습니다.
+
 ## 0.9.0의 새로운 점
 
 - **텍스트 모드 verdict 한 줄 (C1):** `check`의 기본(텍스트) 출력이 이제 grep 친화적인 `Summary:` 한 줄로 시작합니다. 기존 native 5단계 status(PASS / ADVISORY / HOLD / BLOCK / NEEDS_MORE_EVIDENCE)를 노출하므로, 지금까지 `--json` 소비자에게만 보이던 핵심 판정을 기본 사용자도 볼 수 있습니다. `... check | head -1`이 곧 CI 신호가 됩니다.

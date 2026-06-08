@@ -3,6 +3,17 @@
 All notable changes to `mini-antemortem-cli` are documented here. This
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.9.1] - 2026-06-08
+
+### Fixed
+
+- **Config-load `ValueError` stderr is now a single line.** `Dataset.from_jsonl`
+  re-raises a bad-schema row as a plain `ValueError` whose string is a multi-line
+  pydantic report, so a bad-schema `--train` / `--test` file emitted a multi-line
+  stderr — contradicting the documented one-line guarantee (the other loader
+  branches were already terse). Only the first line is now emitted. The exit code
+  is unchanged (still `2`); a regression test locks the single-line behavior.
+
 ## [0.9.0] - 2026-06-08
 
 This release makes the verdict visible, makes findings self-contained, and
@@ -49,4 +60,5 @@ and moves the project to Beta.
   config-referenced citations (Yes, via C2). The `--fail-on-blocker` help text
   and exit-code docs reflect that overlap now emits `BLOCKER`.
 
+[0.9.1]: https://github.com/hibou04-ops/mini-antemortem-cli/releases/tag/v0.9.1
 [0.9.0]: https://github.com/hibou04-ops/mini-antemortem-cli/releases/tag/v0.9.0
