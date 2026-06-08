@@ -402,3 +402,169 @@ def test_routed_provider_canonicalization_handles_underscores():
     )
     f = _by_trap(findings, "routed_provider_opaque_family")
     assert f.label == "UNRESOLVED"
+
+
+# ---------------------------------------------------------------------------
+# C2 (0.9.0): config-referenced citations on high-signal traps. Each enriched
+# trap's `cite` is non-None and substrings the firing value. Other traps leave
+# cite None (existing AnalyticalFinding optional field; no schema change).
+# ---------------------------------------------------------------------------
+
+
+def _overlap_datasets():
+    train = Dataset(
+        items=[DatasetItem(id=i, input="x") for i in ["shared", "ta", "tb", "tc"]]
+    )
+    test = Dataset(
+        items=[DatasetItem(id=i, input="x") for i in ["shared", "va", "vb", "vc"]]
+    )
+    return train, test
+
+
+def test_cite_train_test_id_overlap_names_overlapping_id():
+    train, test = _overlap_datasets()
+    findings = analytical_preflight(
+        target_provider="openai",
+        target_model="gpt-4o",
+        judge_provider="anthropic",
+        judge_model="claude-opus-4-7",
+        train_dataset=train,
+        test_dataset=test,
+        rubric=_rubric(),
+        variants=_variants(),
+    )
+    f = _by_trap(findings, "train_test_id_overlap")
+    assert f.cite is not None
+    assert "shared" in f.cite
+
+
+def test_cite_rubric_weight_concentration_names_dimension_and_weight():
+    findings = analytical_preflight(
+        target_provider="openai",
+        target_model="gpt-4o",
+        judge_provider="anthropic",
+        judge_model="claude-opus-4-7",
+        train_dataset=_dataset(n=20),
+        test_dataset=_dataset(n=15),
+        rubric=_rubric({"accuracy": 0.9, "clarity": 0.1}),
+        variants=_variants(),
+    )
+    f = _by_trap(findings, "rubric_weight_concentration")
+    assert f.cite is not None
+    # Short form: "dimension: accuracy (90% of weight)".
+    assert "accuracy" in f.cite
+    assert "dimension" in f.cite
+
+
+def test_cite_variants_homogeneous_reports_max_jaccard():
+    findings = analytical_preflight(
+        target_provider="openai",
+        target_model="gpt-4o",
+        judge_provider="anthropic",
+        judge_model="claude-opus-4-7",
+        train_dataset=_dataset(n=20),
+        test_dataset=_dataset(n=15),
+        rubric=_rubric(),
+        variants=PromptVariants(
+            system_prompts=[
+                "You are a careful assistant that double checks every answer.",
+                "You are a careful assistant that double checks every reply.",
+            ],
+            few_shot_examples=[{"input": "1+1", "output": "2"}],
+        ),
+    )
+    f = _by_trap(findings, "variants_homogeneous")
+    assert f.label == "REAL"  # high token overlap branch
+    assert f.cite is not None
+    assert "Jaccard" in f.cite
+
+
+def test_cite_small_sample_power_reports_test_size():
+    findings = analytical_preflight(
+        target_provider="openai",
+        target_model="gpt-4o",
+        judge_provider="anthropic",
+        judge_model="claude-opus-4-7",
+        train_dataset=_dataset(n=12),
+        test_dataset=_dataset(n=4),
+        rubric=_rubric(),
+        variants=_variants(),
+    )
+    f = _by_trap(findings, "small_sample_kc4_power")
+    assert f.label == "REAL"
+    assert f.cite is not None
+    assert "4" in f.cite  # the firing test size
+
+
+def test_non_enriched_traps_leave_cite_none():
+    # A clean cross-vendor config: self_agreement is GHOST and carries no cite.
+    findings = analytical_preflight(
+        target_provider="openai",
+        target_model="gpt-4o",
+        judge_provider="anthropic",
+        judge_model="claude-opus-4-7",
+        train_dataset=_dataset(n=20),
+        test_dataset=_dataset(n=15),
+        rubric=_rubric(),
+        variants=_variants(),
+    )
+    assert _by_trap(findings, "self_agreement_bias").cite is None
+
+
+# ---------------------------------------------------------------------------
+# H2 (0.9.0): exact train/test ID overlap is BLOCKER; summarize_findings -> BLOCK.
+# ---------------------------------------------------------------------------
+
+
+def test_overlap_emits_blocker_severity():
+    train, test = _overlap_datasets()
+    findings = analytical_preflight(
+        target_provider="openai",
+        target_model="gpt-4o",
+        judge_provider="anthropic",
+        judge_model="claude-opus-4-7",
+        train_dataset=train,
+        test_dataset=test,
+        rubric=_rubric(),
+        variants=_variants(),
+    )
+    f = _by_trap(findings, "train_test_id_overlap")
+    assert f.label == "REAL"
+    assert f.severity == PreflightSeverity.BLOCKER
+
+
+def test_overlap_summarizes_to_block_status():
+    from mini_antemortem_cli.traps import summarize_findings
+
+    train, test = _overlap_datasets()
+    findings = analytical_preflight(
+        target_provider="openai",
+        target_model="gpt-4o",
+        judge_provider="anthropic",
+        judge_model="claude-opus-4-7",
+        train_dataset=train,
+        test_dataset=test,
+        rubric=_rubric(),
+        variants=_variants(),
+    )
+    summary = summarize_findings(findings)
+    assert summary["status"] == "BLOCK"
+    assert summary["highest_severity"] == "blocker"
+
+
+def test_within_slice_duplicates_stay_medium():
+    # Within-slice dup (not cross-slice overlap) must remain MEDIUM, not BLOCKER.
+    train = Dataset(items=[DatasetItem(id=i, input="x") for i in ["d", "d", "e"]])
+    test = Dataset(items=[DatasetItem(id=i, input="x") for i in ["x", "y", "z"]])
+    findings = analytical_preflight(
+        target_provider="openai",
+        target_model="gpt-4o",
+        judge_provider="anthropic",
+        judge_model="claude-opus-4-7",
+        train_dataset=train,
+        test_dataset=test,
+        rubric=_rubric(),
+        variants=_variants(),
+    )
+    f = _by_trap(findings, "train_test_id_overlap")
+    assert f.severity == PreflightSeverity.MEDIUM

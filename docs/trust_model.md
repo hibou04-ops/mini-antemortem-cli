@@ -8,6 +8,11 @@ calibration configuration. It does not verify model quality.
 - The source-backed built-in trap registry exposed by `analytical_traps()`.
 - Deterministic classification of local dataset/rubric/variant inputs.
 - Explicit trap IDs on every `AnalyticalFinding`.
+- Config-referenced citations (`cite` field), as of 0.9.0, on the
+  high-signal traps: the computed value the trap fired on (overlapping
+  ids, dominant rubric dimension and weight, max pairwise variant
+  Jaccard, undersized test slice). These reference the supplied
+  calibration config, not on-disk source files.
 - Severity assignment according to local classifier rules.
 - CLI policy gates via `--fail-on-severity` and `--fail-on-label`.
 - MCP path boundaries for filesystem inputs.
@@ -31,7 +36,8 @@ Current trap IDs:
 - Statistical validity of a calibration result.
 - Production adoption or external validation.
 - Live endpoint reliability.
-- Disk-verified source file citations.
+- Disk-verified source file citations. (The 0.9.0 `cite` field references
+  the supplied calibration config, not on-disk source files.)
 - Append-only audit trails.
 
 ## Deterministic / No-Network Boundary

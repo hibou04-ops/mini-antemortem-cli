@@ -7,6 +7,10 @@
 - `analytical_traps()`가 노출하는 source-backed built-in trap registry.
 - 로컬 dataset/rubric/variant 입력에 대한 deterministic classification.
 - 모든 `AnalyticalFinding`의 explicit trap ID.
+- 0.9.0부터, high-signal trap에 대한 config-referenced citation(`cite` 필드):
+  trap이 발화한 계산값(겹치는 id, 지배적 rubric dimension과 weight,
+  variant의 최대 pairwise Jaccard, 너무 작은 test slice). 이는 사용자가
+  제공한 calibration config를 가리키며, 디스크상의 소스 파일이 아닙니다.
 - 로컬 classifier rule에 따른 severity assignment.
 - `--fail-on-severity`, `--fail-on-label` 기반 CLI policy gate.
 - MCP filesystem input의 workspace boundary.
@@ -30,7 +34,8 @@ Current trap IDs:
 - Calibration result의 statistical validity.
 - Production adoption 또는 external validation.
 - Live endpoint reliability.
-- Disk-verified source file citation.
+- Disk-verified source file citation. (0.9.0의 `cite` 필드는 디스크상의 소스
+  파일이 아니라 제공된 calibration config를 가리킵니다.)
 - Append-only audit trail.
 
 ## Deterministic / No-Network 경계

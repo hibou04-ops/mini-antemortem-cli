@@ -13,6 +13,16 @@ pip install mini-antemortem-cli
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
+## What's New in 0.9.0
+
+- **Text-mode verdict line (C1):** the default (text) output of `check` now leads with one grep-friendly `Summary:` line that surfaces the existing native 5-level status (PASS / ADVISORY / HOLD / BLOCK / NEEDS_MORE_EVIDENCE). The core verdict — previously visible only to `--json` consumers — is now visible to the default user. `... check | head -1` becomes the CI signal.
+- **Config-referenced citations (C2):** high-signal findings now carry the computed value the trap fired on in the `cite` field (overlapping ids, dominant rubric dimension and weight, max pairwise variant Jaccard, undersized test slice). These reference the supplied calibration config, not on-disk source files.
+- **Clean input errors (C3):** input-file load failures (missing file, malformed JSON, schema mismatch) are now reported as a one-line stderr message naming the file and the error class, then exit code `2` (config error, distinct from the policy-gate exit `1`) — no more raw tracebacks.
+- **`list-traps --json` (H1):** emit the trap registry as a `{id, hypothesis}` JSON array. Text remains the default.
+- **Exact train/test ID overlap = BLOCKER (H2, behavior change):** exact train/test ID overlap now fires at `BLOCKER` severity (was `high`) — the held-out set is not held out, a hard leak. Within-slice duplicates stay `medium`. This is a public severity-contract change; `--fail-on-severity high` still catches BLOCKER, so no CI gate regresses.
+
+This release moves the project to `Development Status :: 4 - Beta`, with a commitment to additive-only changes to the CLI / JSON / MCP surface going forward.
+
 ## Trust / Verification Links
 
 - Generated source-of-truth claims: [English](docs/generated/claims.md) / [Korean](docs/generated/claims_kr.md)
@@ -47,7 +57,7 @@ These commands are no-network by design. They verify that public claims, generat
 
 ## False-Positive Audit
 
-`benchmarks/false_positive/benign_cases.json` carries a labeled corpus of configurations (45 cases across all 9 traps, with both nominal and boundary inputs) that the analytical preflight must *not* flag. `scripts/run_false_positive_audit.py` replays the corpus through the same deterministic classifier and reports the per-trap false-positive rate; the same script runs as a CI gate, so a regression that flips a benign case to `REAL` / `NEW` / `UNRESOLVED` fails the build. As of 0.8.0 the measured rate is 0/45 (0.00%). Known classifier limitations can be recorded in the manifest's `acknowledged_false_positives` block so the gate distinguishes regressions from documented behavior.
+`benchmarks/false_positive/benign_cases.json` carries a labeled corpus of configurations (45 cases across all 9 traps, with both nominal and boundary inputs) that the analytical preflight must *not* flag. `scripts/run_false_positive_audit.py` replays the corpus through the same deterministic classifier and reports the per-trap false-positive rate; the same script runs as a CI gate, so a regression that flips a benign case to `REAL` / `NEW` / `UNRESOLVED` fails the build. As of 0.9.0 the measured rate is 0/45 (0.00%) (the H2 BLOCKER reclassification does not affect this corpus, which contains no overlap cases by construction). Known classifier limitations can be recorded in the manifest's `acknowledged_false_positives` block so the gate distinguishes regressions from documented behavior.
 
 ## Deterministic Demo
 
@@ -72,7 +82,8 @@ The demo loads JSONL/JSON fixtures from `examples/demo_config/`, runs `mini-ante
 | CLI/MCP availability | CLI: `mini-antemortem-cli`; MCP: `mini-antemortem-cli-mcp` via `[mcp]`. | Separate sibling package. | Separate broader CLI. | Library API. | None unless built by the user. |
 | Reads source files | No. It reads calibration input files only. | No by default. | Yes, for disk-backed recon and citations. | No source recon by default. | Only if pasted or tool-enabled. |
 | Live empirical probes | No. | Yes in live mode. | Yes when configured. | Provider calls during calibration. | Maybe, but not reproducible by default. |
-| Disk-verified file:line citations | No. Fixture integrity only. | No. | Yes, where that tool implements evidence-bound citations. | No. | No. |
+| Disk-verified file:line citations | No (disk citations). Fixture integrity only. As of 0.9.0, findings carry config-referenced citations (the computed value the trap fired on, e.g. the overlapping ids or dominant rubric dimension) in the `cite` field — see the `cite` row below. | No. | Yes, where that tool implements evidence-bound citations. | No. | No. |
+| Config-referenced citations (`cite` field) | Yes, as of 0.9.0, for the high-signal traps where the firing value is computed (overlapping ids, dominant rubric dimension and weight, max pairwise variant Jaccard, undersized test slice). These reference the calibration config the user supplied, not on-disk source files. | No. | Distinct mechanism (disk-backed). | No. | No. |
 | What it does not prove | It does not prove provider quality, prompt superiority, statistical validity, production adoption, or external validation. | It does not prove analytical trap absence. | It does not prove this mini package's trap count. | It does not perform this preflight unless supplied. | It proves nothing mechanically. |
 
 ## Built-In Trap Patterns
@@ -109,7 +120,7 @@ mini-antemortem-cli check \
   --judge-output-budget small
 ```
 
-Use `--json` for machine-readable output. Use `--fail-on-severity high` when CI should fail on high-or-worse `REAL`/`UNRESOLVED` findings. The deprecated `--fail-on-blocker` alias remains for backward compatibility.
+Use `--json` for machine-readable output. Use `--fail-on-severity high` when CI should fail on high-or-worse `REAL`/`UNRESOLVED` findings (this catches BLOCKER too). The deprecated `--fail-on-blocker` alias remains for backward compatibility; as of 0.9.0 it trips on a real failure because exact train/test ID overlap emits BLOCKER. `list-traps` accepts `--json` for a machine-readable `{id, hypothesis}` array.
 
 ## Python API
 

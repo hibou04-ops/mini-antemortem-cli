@@ -22,12 +22,16 @@ Usage::
       --judge-output-budget small
 
 Add ``--json`` for machine-readable output (one ``AnalyticalFinding``
-per row in the ``findings`` array). Exit code is 0 unless any finding
-has ``severity=blocker``; the CLI is non-blocking by default because
-analytical preflight is advisory, not a ship gate.
+per row in the ``findings`` array). Exit code is 0 by default — the CLI
+is non-blocking because analytical preflight is advisory, not a ship
+gate — unless ``--fail-on-severity`` (or the deprecated
+``--fail-on-blocker``) turns it into a policy gate, in which case a
+matching finding exits 1. A configuration error (a missing or malformed
+input file) exits 2. See ``docs/cli_exit_codes.md``.
 
-The intent is to keep this CLI dependency-free (stdlib argparse) so it
-runs anywhere ``omegaprompt`` already runs — no extra installs.
+The intent is to keep this CLI dependency-light (stdlib argparse +
+pydantic, both already required by ``omegaprompt``) so it runs anywhere
+``omegaprompt`` already runs — no extra installs.
 """
 
 from __future__ import annotations
@@ -37,6 +41,8 @@ import json
 import sys
 from pathlib import Path
 from typing import Sequence
+
+from pydantic import ValidationError
 
 from omegaprompt.domain.dataset import Dataset
 from omegaprompt.domain.judge import JudgeRubric
@@ -148,15 +154,24 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Deprecated alias for `--fail-on-severity blocker --fail-on-label "
-            "REAL,NEW,UNRESOLVED`. Currently almost-always a no-op because no "
-            "built-in trap emits BLOCKER severity. Use --fail-on-severity "
-            "high for the CI gate users typically intend."
+            "REAL,NEW,UNRESOLVED`. As of 0.9.0 the train_test_id_overlap trap "
+            "emits BLOCKER on exact train/test ID overlap, so this gate now "
+            "trips on a real failure. Prefer --fail-on-severity high, which "
+            "catches BLOCKER and HIGH alike."
         ),
     )
 
-    sub.add_parser(
+    list_traps = sub.add_parser(
         "list-traps",
         help=f"List the {len(analytical_traps())} built-in trap patterns and exit.",
+    )
+    list_traps.add_argument(
+        "--json",
+        action="store_true",
+        help=(
+            "Emit the trap registry as a JSON array of {id, hypothesis} "
+            "objects instead of human-readable text."
+        ),
     )
 
     return parser
@@ -187,8 +202,71 @@ def _load_variants(path: Path) -> PromptVariants:
     return PromptVariants.model_validate_json(path.read_text(encoding="utf-8"))
 
 
+# Exit code 2 == configuration/usage error (matches argparse and
+# docs/cli_exit_codes.md). Distinct from exit 1, which is a policy-gate
+# failure (a finding met --fail-on-severity). A bad input file is not a
+# policy decision, so it must not be confused with a gate trip.
+_CONFIG_ERROR_EXIT = 2
+
+
+class _InputLoadError(Exception):
+    """A calibration input file could not be loaded (config error -> exit 2)."""
+
+
+def _load_input(label: str, path: Path, loader):  # type: ignore[no-untyped-def]
+    """Run ``loader(path)``; translate load failures into a structured error.
+
+    Wraps each on-disk loader so a bad file produces a one-line stderr
+    message naming the file and the error class — not a raw Python
+    traceback. The path is printed exactly as the user supplied it
+    (no ``.resolve()``), so absolute home-directory paths are never
+    leaked into CI logs.
+
+    Caught classes (verified empirically against the omegaprompt
+    loaders, 2026-06-08):
+
+    - ``FileNotFoundError`` — missing file (all loaders).
+    - ``json.JSONDecodeError`` — malformed JSON (rubric ``from_json``).
+    - ``ValidationError`` — schema mismatch / malformed JSON (pydantic
+      ``model_validate_json`` path: variants).
+    - ``ValueError`` — malformed JSON or schema mismatch wrapped by
+      ``Dataset.from_jsonl`` (it re-raises both as ``ValueError``).
+      ``json.JSONDecodeError`` subclasses ``ValueError``; the isinstance
+      ladder labels it first so the message stays specific.
+    """
+    try:
+        return loader(path)
+    except FileNotFoundError as exc:
+        raise _InputLoadError(
+            f"{label} file not found: {path} (FileNotFoundError)"
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise _InputLoadError(
+            f"{label} file is not valid JSON: {path} (JSONDecodeError: {exc.msg})"
+        ) from exc
+    except ValidationError as exc:
+        raise _InputLoadError(
+            f"{label} file failed schema validation: {path} (ValidationError)"
+        ) from exc
+    except ValueError as exc:
+        raise _InputLoadError(
+            f"{label} file is malformed or schema-invalid: {path} (ValueError: {exc})"
+        ) from exc
+
+
 def _format_text(findings: Sequence[AnalyticalFinding]) -> str:
-    lines: list[str] = []
+    # C1 (0.9.0): lead with one grep-friendly verdict line so the native
+    # 5-level status (PASS/ADVISORY/HOLD/BLOCK/NEEDS_MORE_EVIDENCE) — the
+    # whole point of the tool — is visible to the default (text) user, not
+    # only to --json consumers. `... check | head -1` becomes the CI signal.
+    summary = summarize_findings(list(findings))
+    counts = summary["counts"]
+    summary_line = (
+        f"Summary: {summary['status']} [{summary['highest_severity']}] - "
+        f"{counts['REAL']} REAL, {counts['GHOST']} GHOST, "
+        f"{counts['NEW']} NEW, {counts['UNRESOLVED']} UNRESOLVED"
+    )
+    lines: list[str] = [summary_line, ""]
     severity_marker = {
         PreflightSeverity.BLOCKER: "[BLOCKER]",
         PreflightSeverity.HIGH: "[HIGH]   ",
@@ -219,11 +297,23 @@ def _format_json(findings: Sequence[AnalyticalFinding]) -> str:
 
 
 def _run_check(args: argparse.Namespace) -> int:
-    train = Dataset.from_jsonl(args.train)
-    test = Dataset.from_jsonl(args.test) if args.test else None
-    rubric = JudgeRubric.from_json(args.rubric)
-    variants = _load_variants(args.variants)
-    policy = TrapPolicy.from_json_file(args.policy) if args.policy else None
+    try:
+        train = _load_input("train dataset", args.train, Dataset.from_jsonl)
+        test = (
+            _load_input("test dataset", args.test, Dataset.from_jsonl)
+            if args.test
+            else None
+        )
+        rubric = _load_input("rubric", args.rubric, JudgeRubric.from_json)
+        variants = _load_input("variants", args.variants, _load_variants)
+        policy = (
+            _load_input("policy", args.policy, TrapPolicy.from_json_file)
+            if args.policy
+            else None
+        )
+    except _InputLoadError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return _CONFIG_ERROR_EXIT
 
     findings = analytical_preflight(
         target_provider=args.target_provider,
@@ -257,7 +347,19 @@ def _run_check(args: argparse.Namespace) -> int:
     return 0
 
 
-def _run_list_traps() -> int:
+def _run_list_traps(args: argparse.Namespace) -> int:
+    if getattr(args, "json", False):
+        # H1 (0.9.0): machine-readable registry for agent/CI consumers.
+        # Text stays the default so the golden cli_list_traps.ids case
+        # (which parses text line-by-line) is unaffected.
+        print(
+            json.dumps(
+                [{"id": trap.id, "hypothesis": trap.hypothesis} for trap in analytical_traps()],
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return 0
     for trap in analytical_traps():
         print(f"{trap.id}")
         print(f"  {trap.hypothesis}")
@@ -271,7 +373,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "check":
         return _run_check(args)
     if args.command == "list-traps":
-        return _run_list_traps()
+        return _run_list_traps(args)
     parser.print_help()
     return 2
 

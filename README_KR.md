@@ -13,6 +13,16 @@ pip install mini-antemortem-cli
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` (`mini-antemortem-cli[mcp]`)
 
+## 0.9.0의 새로운 점
+
+- **텍스트 모드 verdict 한 줄 (C1):** `check`의 기본(텍스트) 출력이 이제 grep 친화적인 `Summary:` 한 줄로 시작합니다. 기존 native 5단계 status(PASS / ADVISORY / HOLD / BLOCK / NEEDS_MORE_EVIDENCE)를 노출하므로, 지금까지 `--json` 소비자에게만 보이던 핵심 판정을 기본 사용자도 볼 수 있습니다. `... check | head -1`이 곧 CI 신호가 됩니다.
+- **Config-referenced citation (C2):** high-signal trap의 finding이 발화한 계산값을 `cite` 필드에 담습니다(겹치는 id, 지배적 rubric dimension과 weight, variant 최대 pairwise Jaccard, 너무 작은 test slice). 디스크 소스 파일이 아니라 제공된 calibration config를 가리킵니다.
+- **깔끔한 입력 오류 처리 (C3):** 입력 파일 로드 실패(없는 파일, 잘못된 JSON, 스키마 불일치)는 이제 raw traceback 대신 파일명과 오류 유형을 담은 한 줄 stderr 메시지로 보고하고 종료 코드 `2`(설정 오류, policy gate의 `1`과 구분)로 종료합니다.
+- **`list-traps --json` (H1):** trap 레지스트리를 `{id, hypothesis}` JSON 배열로 출력합니다. 텍스트가 기본값으로 유지됩니다.
+- **train/test ID 정확 겹침 = BLOCKER (H2, 동작 변경):** held-out 세트가 실제로 held-out이 아닌 hard leak이므로, 정확한 train/test ID 겹침은 이제 `BLOCKER` severity로 발화합니다(이전 `high`). slice 내부 중복은 `medium`으로 유지됩니다. 공개 severity 계약 변경입니다. `--fail-on-severity high`는 여전히 BLOCKER를 잡으므로 CI gate는 회귀하지 않습니다.
+
+이 버전부터 `Development Status :: 4 - Beta`입니다. 이후로 CLI / JSON / MCP surface는 additive-only(추가만, 제거/변경 없음)로 유지하기로 약속합니다.
+
 ## 신뢰성 / 검증 링크
 
 - 생성된 source-of-truth claims: [English](docs/generated/claims.md) / [Korean](docs/generated/claims_kr.md)
@@ -47,7 +57,7 @@ python scripts/verify_fixture_integrity.py
 
 ## False-Positive Audit
 
-`benchmarks/false_positive/benign_cases.json`에는 9개 trap 모두에 대한 레이블링된 45건의 benign 구성이 들어 있습니다. 일반 케이스와 경계값 케이스를 함께 포함하며, 분석 단계에서 절대로 발화되어서는 안 되는 입력들입니다. `scripts/run_false_positive_audit.py`는 동일한 결정론적 분류기로 이 corpus를 재생해 trap별 false-positive 비율을 산출하고, 같은 스크립트가 CI 게이트로 묶여 있어 benign 케이스 하나라도 `REAL` / `NEW` / `UNRESOLVED`로 뒤집히면 빌드가 실패합니다. 0.8.0 기준 측정값은 0/45 (0.00%)입니다. 분류기의 알려진 한계는 매니페스트의 `acknowledged_false_positives` 블록에 명시할 수 있어, 게이트가 회귀와 의도된 동작을 구분합니다.
+`benchmarks/false_positive/benign_cases.json`에는 9개 trap 모두에 대한 레이블링된 45건의 benign 구성이 들어 있습니다. 일반 케이스와 경계값 케이스를 함께 포함하며, 분석 단계에서 절대로 발화되어서는 안 되는 입력들입니다. `scripts/run_false_positive_audit.py`는 동일한 결정론적 분류기로 이 corpus를 재생해 trap별 false-positive 비율을 산출하고, 같은 스크립트가 CI 게이트로 묶여 있어 benign 케이스 하나라도 `REAL` / `NEW` / `UNRESOLVED`로 뒤집히면 빌드가 실패합니다. 0.9.0 기준 측정값은 0/45 (0.00%)입니다(H2의 BLOCKER 재분류는 benign corpus에 겹침 케이스가 없어 영향이 없습니다). 분류기의 알려진 한계는 매니페스트의 `acknowledged_false_positives` 블록에 명시할 수 있어, 게이트가 회귀와 의도된 동작을 구분합니다.
 
 ## 결정론적 데모
 
@@ -72,7 +82,8 @@ python examples/demo_replay.py
 | CLI/MCP 가용성 | CLI: `mini-antemortem-cli`; MCP: `[mcp]` 익스트라로 `mini-antemortem-cli-mcp`. | 별도 자매 패키지. | 더 넓은 별도 CLI. | 라이브러리 API. | 사용자가 직접 만들지 않으면 없음. |
 | 소스 파일 읽기 | 안 함. calibration 입력 파일만 읽음. | 기본적으로 안 함. | 디스크 기반 정찰과 citation을 위해 읽음. | 기본적으로 source 정찰 없음. | 붙여 넣거나 툴 활성화 시에만. |
 | Live empirical probe | 없음. | live 모드에서 수행. | 설정되면 수행. | calibration 중 provider 호출. | 가능하나 기본적으로 재현 불가. |
-| 디스크 검증된 file:line citation | 없음 (fixture 무결성만). | 없음. | 그 도구가 evidence-bound citation을 구현한 범위에서 가능. | 없음. | 없음. |
+| 디스크 검증된 file:line citation | 없음 (디스크 citation). fixture 무결성만. 0.9.0부터 finding은 trap이 발화한 계산값(겹치는 id, 지배적 rubric dimension 등)을 `cite` 필드에 config-referenced citation으로 담습니다 — 아래 `cite` 행 참조. | 없음. | 그 도구가 evidence-bound citation을 구현한 범위에서 가능. | 없음. | 없음. |
+| Config-referenced citation (`cite` 필드) | 있음. 0.9.0부터, 발화값이 계산되는 high-signal trap(겹치는 id, 지배적 rubric dimension과 weight, variant 최대 pairwise Jaccard, 너무 작은 test slice)에 대해 제공됨. 디스크 소스 파일이 아니라 사용자가 제공한 calibration config를 가리킵니다. | 없음. | 별개 메커니즘(디스크 기반). | 없음. | 없음. |
 | 증명하지 않는 것 | provider 품질, 프롬프트 우위, 통계적 유효성, 프로덕션 채택, 외부 검증 어느 것도 증명하지 않음. | analytical trap의 부재를 증명하지 않음. | 이 mini 패키지의 trap 수를 증명하지 않음. | 공급되지 않으면 preflight를 수행하지 않음. | 기계적으로 아무것도 증명하지 않음. |
 
 ## Built-In Trap 패턴
@@ -109,7 +120,7 @@ mini-antemortem-cli check \
   --judge-output-budget small
 ```
 
-기계 판독 가능한 출력은 `--json`으로, CI에서 high 이상의 `REAL`/`UNRESOLVED` finding을 실패로 처리하려면 `--fail-on-severity high`로 받습니다. 하위 호환을 위한 `--fail-on-blocker` 별칭은 남아 있습니다.
+기계 판독 가능한 출력은 `--json`으로, CI에서 high 이상의 `REAL`/`UNRESOLVED` finding을 실패로 처리하려면 `--fail-on-severity high`로 받습니다(BLOCKER도 함께 잡힙니다). 하위 호환을 위한 `--fail-on-blocker` 별칭은 남아 있으며, 0.9.0부터 train/test ID 정확 겹침이 BLOCKER로 발화하므로 실제 실패에서 작동합니다.
 
 ## Python API
 

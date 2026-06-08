@@ -393,6 +393,7 @@ def _check_sample_power(
                 "Expand test set to at least 20 items, or raise --min-kc4 adaptively "
                 "(handled by AdaptationPlan)."
             ),
+            cite=f"test size: {test_size} (threshold {policy.min_test_items_high})",
         )
     if total < policy.min_total_items_medium:
         return _finding(
@@ -500,6 +501,7 @@ def _check_variants_homogeneity(
                 "or task decomposition — not just wording. Aim for max pairwise "
                 f"Jaccard below {policy.near_duplicate_jaccard:.0%}."
             ),
+            cite=f"max pairwise Jaccard: {max_jaccard:.0%} (threshold {policy.near_duplicate_jaccard:.0%})",
         )
     if length_span_small and max_jaccard >= policy.length_uniform_min_jaccard:
         # FP guard (2026-05-28): length uniformity alone is too aggressive —
@@ -557,6 +559,7 @@ def _check_rubric_concentration(
                 "Rebalance rubric so no single dimension exceeds ~50% weight, "
                 "or explicitly declare this concentration is intentional."
             ),
+            cite=f"dimension: {max_name} ({max_w:.0%} of weight)",
         )
     return _finding(
         trap,
@@ -665,10 +668,15 @@ def _check_dataset_leakage(
     if overlap:
         sample = ", ".join(overlap[:5])
         more = f" (+{len(overlap) - 5} more)" if len(overlap) > 5 else ""
+        # H2 (0.9.0): exact train/test ID overlap is the strongest leak —
+        # the held-out set is not held out, so KC-4 / per-item correlation
+        # reads on a memorised dataset. Emit BLOCKER (was HIGH). Within-slice
+        # duplicates below stay MEDIUM. Public severity change; --fail-on-
+        # severity high still trips on blocker, so no CI gate regresses.
         return _finding(
             trap,
             label="REAL",
-            severity=PreflightSeverity.HIGH,
+            severity=PreflightSeverity.BLOCKER,
             note=(
                 f"{len(overlap)} item id(s) appear in both train and test: "
                 f"{sample}{more}. Per-item correlation will be inflated by "
@@ -679,6 +687,7 @@ def _check_dataset_leakage(
                 "train) and re-run. ID disjointness is a hard prerequisite "
                 "for KC-4 power."
             ),
+            cite=f"overlapping ids: {sample}{more}",
         )
     if train_dupes or test_dupes:
         all_dupes = (train_dupes or []) + (test_dupes or [])
