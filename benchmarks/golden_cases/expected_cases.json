@@ -164,6 +164,42 @@
       }
     },
     {
+      "case_id": "few_shot_leakage_into_test.real_high",
+      "mode": "analytical_preflight",
+      "trap_id": "few_shot_leakage_into_test",
+      "expected": {
+        "label": "REAL",
+        "severity": "high"
+      }
+    },
+    {
+      "case_id": "few_shot_leakage_into_test.ghost_disjoint",
+      "mode": "analytical_preflight",
+      "trap_id": "few_shot_leakage_into_test",
+      "expected": {
+        "label": "GHOST",
+        "severity": "low"
+      }
+    },
+    {
+      "case_id": "rubric_dead_weight_dimension.real_medium",
+      "mode": "analytical_preflight",
+      "trap_id": "rubric_dead_weight_dimension",
+      "expected": {
+        "label": "REAL",
+        "severity": "medium"
+      }
+    },
+    {
+      "case_id": "rubric_dead_weight_dimension.ghost_all_weighted",
+      "mode": "analytical_preflight",
+      "trap_id": "rubric_dead_weight_dimension",
+      "expected": {
+        "label": "GHOST",
+        "severity": "low"
+      }
+    },
+    {
       "case_id": "policy_override.sample_power_relaxed",
       "mode": "analytical_preflight",
       "trap_id": "small_sample_kc4_power",
@@ -178,7 +214,7 @@
       "expected": {
         "return_code": 0,
         "status": "HOLD",
-        "trap_count": 9
+        "trap_count": 11
       }
     },
     {
@@ -193,7 +229,7 @@
       "mode": "cli_list_traps",
       "expected": {
         "return_code": 0,
-        "trap_count": 9
+        "trap_count": 11
       }
     }
   ]

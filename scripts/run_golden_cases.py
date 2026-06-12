@@ -40,6 +40,21 @@ def _dataset(prefix: str, n: int, *, with_ref: bool = True, ids: list[str] | Non
     )
 
 
+def _leak_dataset(prefix: str, n: int, *, leak_input: str) -> Dataset:
+    """Dataset whose first item's input equals a few-shot example input.
+
+    Used to exercise ``few_shot_leakage_into_test``: the base variants ship
+    a few-shot example ``{"input": "1+1", ...}``, so an item whose input is
+    ``"1+1"`` is leaked into the prompt the model sees at inference.
+    """
+    items = [DatasetItem(id=f"{prefix}leak", input=leak_input, reference=None)]
+    items += [
+        DatasetItem(id=f"{prefix}{i:03d}", input=f"task {prefix}{i:03d}", reference=f"ref {prefix}{i:03d}")
+        for i in range(n - 1)
+    ]
+    return Dataset(items=items)
+
+
 def _rubric(weights: dict[str, float] | None = None, *, needs_reference: bool = False, gates: int = 1) -> JudgeRubric:
     weights = weights or {"accuracy": 0.5, "clarity": 0.5}
     description = "Matches the expected output." if needs_reference else "Self-contained quality score."
@@ -199,6 +214,16 @@ CASE_BUILDERS: dict[str, Callable[[], dict[str, Any]]] = {
         target_provider="openrouter",
     ),
     "routed_provider_opaque_family.ghost_first_party": lambda: _preflight_case("routed_provider_opaque_family"),
+    "few_shot_leakage_into_test.real_high": lambda: _preflight_case(
+        "few_shot_leakage_into_test",
+        test_dataset=_leak_dataset("v", 20, leak_input="1+1"),
+    ),
+    "few_shot_leakage_into_test.ghost_disjoint": lambda: _preflight_case("few_shot_leakage_into_test"),
+    "rubric_dead_weight_dimension.real_medium": lambda: _preflight_case(
+        "rubric_dead_weight_dimension",
+        rubric=_rubric({"accuracy": 1.0, "clarity": 0.0}),
+    ),
+    "rubric_dead_weight_dimension.ghost_all_weighted": lambda: _preflight_case("rubric_dead_weight_dimension"),
     "policy_override.sample_power_relaxed": lambda: _preflight_case(
         "small_sample_kc4_power",
         train_dataset=_dataset("t", 12),

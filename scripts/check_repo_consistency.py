@@ -134,7 +134,16 @@ def run_checks(root: Path = ROOT) -> list[str]:
     if not any(marker in init_text for marker in count_markers):
         errors.append("__init__.py docstring does not mention the source trap count")
 
-    for rel in PUBLIC_DOCS + ("docs/generated/claims.md", "docs/generated/claims_kr.md"):
+    # Docs that enumerate the trap IDs explicitly must stay in lock-step with
+    # the source registry. trust_model.* carry a "Current trap IDs" list that
+    # the generator does not own, so they used to be able to drift silently —
+    # the very failure mode this tooling exists to prevent. Enforce them here.
+    for rel in PUBLIC_DOCS + (
+        "docs/generated/claims.md",
+        "docs/generated/claims_kr.md",
+        "docs/trust_model.md",
+        "docs/trust_model_kr.md",
+    ):
         text = _read(root, rel)
         for trap_id in facts.trap_ids:
             if trap_id not in text:

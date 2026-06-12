@@ -13,6 +13,10 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.repo_facts import project_facts  # noqa: E402
 
 
 def _expand_wheels(args: list[str]) -> list[Path]:
@@ -106,8 +110,14 @@ def smoke_wheel(wheel: Path) -> int:
         if result.returncode != 0:
             return _fail("COMMAND_FAILED: CLI JSON check failed", result)
         payload = json.loads(result.stdout)
-        if len(payload.get("findings", [])) != 9:
-            return _fail("COMMAND_FAILED: CLI JSON did not return 9 findings", result)
+        expected_count = project_facts(ROOT).trap_count
+        actual_count = len(payload.get("findings", []))
+        if actual_count != expected_count:
+            return _fail(
+                f"COMMAND_FAILED: CLI JSON returned {actual_count} findings, "
+                f"expected {expected_count} (source trap count)",
+                result,
+            )
 
         print(f"WHEEL_SMOKE_OK {wheel}")
         return 0
