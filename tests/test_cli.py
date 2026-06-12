@@ -18,6 +18,7 @@ from omegaprompt.domain.judge import Dimension, HardGate, JudgeRubric
 from omegaprompt.domain.params import PromptVariants
 
 from mini_antemortem_cli.cli import main
+from mini_antemortem_cli.traps import analytical_traps
 
 
 def _write_dataset(path: Path, n: int, with_ref: bool = False) -> None:
@@ -126,7 +127,7 @@ def test_cli_check_json_output_machine_readable(tmp_path: Path, capsys):
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     assert "findings" in payload
-    assert len(payload["findings"]) == 9
+    assert len(payload["findings"]) == len(analytical_traps())
     for f in payload["findings"]:
         assert {"trap_id", "label", "hypothesis", "severity"}.issubset(f)
     # Reviewer P2: summary fields are part of the JSON envelope.
@@ -348,7 +349,7 @@ def test_cli_list_traps_json_emits_array(capsys):
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     assert isinstance(payload, list)
-    assert len(payload) == 9
+    assert len(payload) == len(analytical_traps())
     for entry in payload:
         assert set(entry.keys()) == {"id", "hypothesis"}
 

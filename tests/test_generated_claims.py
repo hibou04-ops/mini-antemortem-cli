@@ -13,7 +13,7 @@ def test_generated_claim_docs_are_current():
 def test_generated_claims_include_actual_trap_ids():
     facts = project_facts()
     body = "\n".join(build_claim_docs(facts).values())
-    assert facts.trap_count == 9
+    assert facts.trap_count == 11
     for trap_id in facts.trap_ids:
         assert trap_id in body
 

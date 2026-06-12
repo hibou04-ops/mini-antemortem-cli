@@ -22,8 +22,37 @@ def test_publish_workflow_is_manual_only():
     assert "branches:" not in text
     assert "pull_request:" not in text
     assert "release_tag" in text
-    assert "v0.4.0" in text
+    # The workflow uses a generic example tag, not a hard-coded real version.
+    assert "v1.2.3" in text
     assert "^v[0-9]+\\.[0-9]+\\.[0-9]+$" in text
+
+
+def test_publish_workflow_has_no_hardcoded_release_version():
+    """Regression: publish.yml must not pin a specific release version.
+
+    A previous revision used `v0.4.0` as the example tag, which read as a
+    hard-coded version while pyproject had drifted ahead. The workflow must
+    stay version-agnostic.
+    """
+    text = _workflow_text()
+    assert "v0.4.0" not in text
+
+
+def test_publish_workflow_verifies_version_agreement():
+    """The build job must assert tag == pyproject == __init__ before publishing.
+
+    This is the version-agnostic gate: instead of trusting a hard-coded
+    version, the workflow reads pyproject via tomllib, parses
+    __init__.__version__, and fails the build on any mismatch.
+    """
+    text = _workflow_text()
+    assert "Verify version agreement" in text
+    assert "tomllib" in text
+    assert "__version__" in text
+    assert "VERSION_AGREEMENT_OK" in text
+    # The version gate must run before the publish job hands off to PyPI.
+    publish_index = text.index("pypa/gh-action-pypi-publish@release/v1")
+    assert text.index("Verify version agreement") < publish_index
 
 
 def test_publish_workflow_uses_trusted_publishing_oidc_only_on_publish_job():

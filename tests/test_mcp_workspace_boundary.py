@@ -177,5 +177,5 @@ def test_inline_dataset_list_works_for_analytical_preflight(workspace):
         rubric=rubric,
         variants=variants,
     )
-    assert len(findings) == 9
+    assert len(findings) == 11
     assert all("trap_id" in f for f in findings)
