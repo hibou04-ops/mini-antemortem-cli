@@ -8,7 +8,7 @@ Inputs:
 
 $ mini-antemortem-cli check --target-provider openai --target-model gpt-4o --judge-provider openai --judge-model gpt-4o --train examples/demo_config/train.jsonl --test examples/demo_config/test.jsonl --rubric examples/demo_config/rubric.json --variants examples/demo_config/variants.json --judge-output-budget small
 exit_code: 0
-Summary: HOLD [high] - 3 REAL, 6 GHOST, 0 NEW, 0 UNRESOLVED
+Summary: HOLD [high] - 3 REAL, 8 GHOST, 0 NEW, 0 UNRESOLVED
 
 [HIGH]    REAL       self_agreement_bias
             Target and judge are identical: openai/gpt-4o. Judge will share the target's distributional biases.
@@ -40,6 +40,12 @@ Summary: HOLD [high] - 3 REAL, 6 GHOST, 0 NEW, 0 UNRESOLVED
 [LOW]     GHOST      routed_provider_opaque_family
             Neither side names a known multi-vendor router; self-agreement-bias check operates on the declared families.
 
+[LOW]     GHOST      few_shot_leakage_into_test
+            None of 2 few-shot text(s) match any train or test item; no leakage path.
+
+[LOW]     GHOST      rubric_dead_weight_dimension
+            All 2 rubric dimension(s) carry non-zero weight; none are dead.
+
 $ mini-antemortem-cli check --target-provider openai --target-model gpt-4o --judge-provider openai --judge-model gpt-4o --train examples/demo_config/train.jsonl --test examples/demo_config/test.jsonl --rubric examples/demo_config/rubric.json --variants examples/demo_config/variants.json --judge-output-budget small --json
 exit_code: 0
 {
@@ -47,7 +53,7 @@ exit_code: 0
   "highest_severity": "high",
   "counts": {
     "REAL": 3,
-    "GHOST": 6,
+    "GHOST": 8,
     "NEW": 0,
     "UNRESOLVED": 0
   },
@@ -94,6 +100,16 @@ exit_code: 0
     },
     {
       "trap_id": "routed_provider_opaque_family",
+      "label": "GHOST",
+      "severity": "low"
+    },
+    {
+      "trap_id": "few_shot_leakage_into_test",
+      "label": "GHOST",
+      "severity": "low"
+    },
+    {
+      "trap_id": "rubric_dead_weight_dimension",
       "label": "GHOST",
       "severity": "low"
     }
