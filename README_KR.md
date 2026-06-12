@@ -1,17 +1,23 @@
 # mini-antemortem-cli
 
-`omegaprompt` calibration config를 위한 결정론적 analytical preflight 도구입니다. config 입력을 읽어 9가지 source-backed built-in trap 패턴을 분류하고 `AnalyticalFinding` 레코드를 발행합니다. provider 호출도, 네트워크도 사용하지 않습니다.
+프롬프트 평가 셋업에 숨은 함정(train/test 누수, judge 편향, 동질적 variant 등)이 가짜 합격 점수를 만들기 전에 잡아내는 결정론적 linter입니다. `omegaprompt` calibration config 입력을 읽어 11가지 source-backed built-in trap 패턴을 분류하고 `AnalyticalFinding` 레코드를 발행합니다. provider 호출도, 네트워크도 사용하지 않습니다. `omegaprompt`와 함께 동작하며, 단독 config linter로도 유용합니다.
 
-[![CI](https://github.com/hibou04-ops/mini-antemortem-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/hibou04-ops/mini-antemortem-cli/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/mini-antemortem-cli.svg?cb=5)](https://pypi.org/project/mini-antemortem-cli/)
-[![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org)
+[![CI](https://github.com/hibou04-ops/mini-antemortem-cli/actions/workflows/ci.yml/badge.svg?cacheSeconds=3600)](https://github.com/hibou04-ops/mini-antemortem-cli/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/mini-antemortem-cli.svg?cacheSeconds=3600)](https://pypi.org/project/mini-antemortem-cli/)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg?cacheSeconds=3600)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg?cacheSeconds=3600)](https://www.python.org)
 
 ```bash
 pip install mini-antemortem-cli
 ```
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` (`mini-antemortem-cli[mcp]`)
+
+## 0.10.0의 새로운 점
+
+- **새 trap 규칙 2개 — 이제 count는 11개(이전 9개).** `few_shot_leakage_into_test`는 모든 prompt variant에 들어가는 few-shot example의 `input`/`output` 텍스트가 held-out test 또는 train 항목과 일치하는 경우를 flag합니다 — 모델이 추론 시점에 답을 건네받은 셈이라 점수가 일반화가 아닌 암기를 반영합니다(test 겹침 시 `REAL`/`HIGH`, train만 겹치면 `REAL`/`MEDIUM`). `rubric_dead_weight_dimension`은 다른 dimension은 weight가 있는데 어떤 dimension의 weight가 0인 경우를 flag합니다 — 그 죽은 axis는 여전히 judge에게 전송되어(토큰과 주의를 소모) fitness에는 전혀 기여하지 않습니다(`REAL`/`MEDIUM`). 둘 다 결정론적이며 실제 `omegaprompt` 도메인 객체로 도달 가능합니다. false-positive corpus는 53건(0/53)으로 늘었고, 두 새 trap 모두 golden case로 커버됩니다.
+- **claim-drift 정정 (수정).** 이 패키지는 trap count를 일관되지 않게 설명했습니다 — `pyproject`는 *nine*, GitHub repository description은 *seven*. source of truth는 `analytical_traps()`이며 이제 11을 반환합니다. 모든 참조(`pyproject`, 4개 README, `__init__` docstring, MCP 서버 instructions, 생성된 claim 문서)가 이 단일 source에서 재생성되고, `scripts/check_repo_consistency.py`가 향후 drift 발생 시 빌드를 실패시킵니다. GitHub repository description도 일치하도록 정정했습니다.
+- **버전 무관 publish 워크플로 (수정).** `.github/workflows/publish.yml`이 이제 `pyproject.toml`의 버전을 (`tomllib`로) 읽어 release tag와 `__init__.__version__`이 그것과 일치하는지 빌드 전에 검증합니다. tag/메타데이터 불일치 시 잘못된 버전을 조용히 publish하는 대신 즉시 실패합니다.
 
 ## 0.9.1의 새로운 점
 
@@ -61,7 +67,7 @@ python scripts/verify_fixture_integrity.py
 
 ## False-Positive Audit
 
-`benchmarks/false_positive/benign_cases.json`에는 9개 trap 모두에 대한 레이블링된 45건의 benign 구성이 들어 있습니다. 일반 케이스와 경계값 케이스를 함께 포함하며, 분석 단계에서 절대로 발화되어서는 안 되는 입력들입니다. `scripts/run_false_positive_audit.py`는 동일한 결정론적 분류기로 이 corpus를 재생해 trap별 false-positive 비율을 산출하고, 같은 스크립트가 CI 게이트로 묶여 있어 benign 케이스 하나라도 `REAL` / `NEW` / `UNRESOLVED`로 뒤집히면 빌드가 실패합니다. 0.9.0 기준 측정값은 0/45 (0.00%)입니다(H2의 BLOCKER 재분류는 benign corpus에 겹침 케이스가 없어 영향이 없습니다). 분류기의 알려진 한계는 매니페스트의 `acknowledged_false_positives` 블록에 명시할 수 있어, 게이트가 회귀와 의도된 동작을 구분합니다.
+`benchmarks/false_positive/benign_cases.json`에는 11개 trap 모두에 대한 레이블링된 53건의 benign 구성이 들어 있습니다. 일반 케이스와 경계값 케이스를 함께 포함하며, 분석 단계에서 절대로 발화되어서는 안 되는 입력들입니다. `scripts/run_false_positive_audit.py`는 동일한 결정론적 분류기로 이 corpus를 재생해 trap별 false-positive 비율을 산출하고, 같은 스크립트가 CI 게이트로 묶여 있어 benign 케이스 하나라도 `REAL` / `NEW` / `UNRESOLVED`로 뒤집히면 빌드가 실패합니다. 0.10.0 기준 측정값은 0/53 (0.00%)입니다. 분류기의 알려진 한계는 매니페스트의 `acknowledged_false_positives` 블록에 명시할 수 있어, 게이트가 회귀와 의도된 동작을 구분합니다.
 
 ## 결정론적 데모
 
@@ -105,6 +111,8 @@ Source of truth: `src/mini_antemortem_cli/traps.py`의 `analytical_traps()`.
 | `no_held_out_slice` | test slice가 없어 walk-forward 검증 자체가 불가능한지. |
 | `train_test_id_overlap` | train/test ID가 겹치거나 중복돼 per-item 상관이 신뢰하기 어려운지. |
 | `routed_provider_opaque_family` | routed provider가 실제로 서빙되는 모델의 패밀리를 가려서 검사가 막히는지. |
+| `few_shot_leakage_into_test` | prompt에 박힌 few-shot example의 input/output이 held-out 항목과 겹쳐 암기로 점수가 부풀려지는지. |
+| `rubric_dead_weight_dimension` | 다른 dimension은 weight가 있는데 weight 0인 dimension이 있어 judge에게는 전송되나 점수에는 반영되지 않는지. |
 
 각 finding은 `REAL`, `GHOST`, `NEW`, `UNRESOLVED` 중 하나의 라벨과 `blocker`, `high`, `medium`, `low` 중 하나의 severity를 가집니다.
 

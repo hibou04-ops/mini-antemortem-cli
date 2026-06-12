@@ -4,9 +4,15 @@ Short version of [README.md](README.md). Korean easy version: [EASY_README_KR.md
 
 ## What Is This?
 
-`mini-antemortem-cli` is a deterministic preflight checker for `omegaprompt` calibration configs. It reads your local config inputs, checks 9 built-in trap patterns, and returns `AnalyticalFinding` records. No API keys, no live providers, no network.
+`mini-antemortem-cli` is a deterministic linter that catches the silent traps in your prompt-eval setup — train/test leakage, judge bias, homogeneous variants — before they fake a passing score. It reads your local `omegaprompt` calibration config inputs, checks 11 built-in trap patterns, and returns `AnalyticalFinding` records. No API keys, no live providers, no network. Works with `omegaprompt`; useful standalone as a config linter.
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
+
+## What's New in 0.10.0
+
+- Two new trap rules — the count is now 11 (was 9): `few_shot_leakage_into_test` (a few-shot example baked into the prompt matches a held-out item) and `rubric_dead_weight_dimension` (a rubric dimension with zero weight that the judge still scores).
+- Claim-drift fix: the trap count is now consistent everywhere (it had said *nine* in one place and *seven* in another); the source of truth is `analytical_traps()` and a consistency check fails the build on drift.
+- Version-agnostic publish workflow: the release tag, `pyproject` version, and `__init__` version must match before a build is published.
 
 ## What's New in 0.9.1
 
@@ -45,6 +51,8 @@ mini-antemortem-cli-mcp
 - `no_held_out_slice`
 - `train_test_id_overlap`
 - `routed_provider_opaque_family`
+- `few_shot_leakage_into_test`
+- `rubric_dead_weight_dimension`
 
 The source-backed count and hypotheses are generated here: [docs/generated/claims.md](docs/generated/claims.md).
 

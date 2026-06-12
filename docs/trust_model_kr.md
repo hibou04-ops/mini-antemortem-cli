@@ -27,6 +27,8 @@ Current trap IDs:
 - `no_held_out_slice`
 - `train_test_id_overlap`
 - `routed_provider_opaque_family`
+- `few_shot_leakage_into_test`
+- `rubric_dead_weight_dimension`
 
 ## 검증하지 않는 것
 
