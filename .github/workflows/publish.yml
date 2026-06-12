@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Existing release tag to publish, for example v0.4.0"
+        description: "Existing release tag to publish, for example v1.2.3"
         required: true
         type: string
 
@@ -28,7 +28,7 @@ jobs:
             release_tag="${GITHUB_REF_NAME}"
           fi
           if [[ ! "${release_tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Release ref must look like v0.4.0; got ${release_tag}" >&2
+            echo "Release ref must look like v1.2.3; got ${release_tag}" >&2
             exit 1
           fi
           echo "release_tag=${release_tag}" >> "${GITHUB_OUTPUT}"
@@ -47,6 +47,36 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev,mcp]"
+
+      - name: Verify version agreement (tag == pyproject == __init__)
+        env:
+          RELEASE_TAG: ${{ steps.release-ref.outputs.release_tag }}
+        run: |
+          python - <<'PY'
+          import os, re, sys, tomllib
+          tag = os.environ["RELEASE_TAG"]
+          tag_version = tag[1:] if tag.startswith("v") else tag
+
+          with open("pyproject.toml", "rb") as fh:
+              pyproject_version = tomllib.load(fh)["project"]["version"]
+
+          init_src = open("src/mini_antemortem_cli/__init__.py", encoding="utf-8").read()
+          m = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', init_src, re.M)
+          if not m:
+              print("FAIL: __version__ not found in __init__.py", file=sys.stderr)
+              sys.exit(1)
+          init_version = m.group(1)
+
+          print(f"tag={tag_version} pyproject={pyproject_version} __init__={init_version}")
+          if not (tag_version == pyproject_version == init_version):
+              print(
+                  "FAIL: version mismatch — the release tag, pyproject.toml "
+                  "[project].version, and __init__.__version__ must all match.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          print("VERSION_AGREEMENT_OK")
+          PY
 
       - name: Run deterministic verification
         run: |
