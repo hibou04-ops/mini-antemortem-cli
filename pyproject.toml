@@ -4,14 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mini-antemortem-cli"
-version = "0.9.1"
-description = "Analytical preflight for omegaprompt calibration: deterministic classifier over nine source-backed calibration trap patterns. Emits AnalyticalFinding records the omegaprompt pipeline consumes via derive_adaptation_plan."
+version = "0.10.0"
+description = "Analytical preflight for omegaprompt calibration: deterministic classifier over eleven source-backed calibration trap patterns. Emits AnalyticalFinding records the omegaprompt pipeline consumes via derive_adaptation_plan."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
-authors = [
-    { name = "hibou04-ops" },
-]
+authors = [{name = "Kyunghoon Gwak", email = "hibouaile04@gmail.com"}]
 keywords = [
     "prompt-calibration",
     "preflight",
