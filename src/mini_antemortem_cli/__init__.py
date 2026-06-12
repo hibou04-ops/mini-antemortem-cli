@@ -1,6 +1,6 @@
 """mini-antemortem-cli - analytical preflight for omegaprompt calibration.
 
-Reads the run configuration and classifies nine calibration-specific
+Reads the run configuration and classifies eleven calibration-specific
 trap patterns against deterministic rules. No API calls, no network;
 reasoning is deterministic given the inputs. Emits
 :class:`omegaprompt.preflight.AnalyticalFinding` records that feed
@@ -17,6 +17,8 @@ Covered traps::
     no_held_out_slice
     train_test_id_overlap
     routed_provider_opaque_family
+    few_shot_leakage_into_test
+    rubric_dead_weight_dimension
 
 Public API::
 
@@ -41,7 +43,7 @@ from mini_antemortem_cli.traps import (
     summarize_findings,
 )
 
-__version__ = "0.9.1"
+__version__ = "0.10.0"
 
 __all__ = [
     "CALIBRATION_TRAPS",

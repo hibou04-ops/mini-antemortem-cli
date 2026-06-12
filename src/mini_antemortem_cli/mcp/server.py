@@ -76,8 +76,9 @@ mcp_app = FastMCP(
         f"Deterministic rule-based classification of {len(CALIBRATION_TRAPS)} calibration trap "
         "patterns: self-agreement bias, small-sample KC-4 power, variant "
         "homogeneity, rubric concentration, judge budget, empty reference, "
-        "missing held-out slice, train/test leakage, and routed-provider "
-        "opacity. Use BEFORE paying for a full calibrate() "
+        "missing held-out slice, train/test leakage, routed-provider "
+        "opacity, few-shot leakage into the eval set, and zero-weight "
+        "rubric dimensions. Use BEFORE paying for a full calibrate() "
         "to surface cheap-to-fix configuration issues."
     ),
 )

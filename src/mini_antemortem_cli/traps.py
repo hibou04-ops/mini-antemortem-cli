@@ -64,6 +64,10 @@ class TrapPolicy:
       SMALL judge output budget is at risk of truncation.
     - ``fail_on_missing_test``: whether the no-held-out-slice trap fires
       when ``test_dataset`` is None (defaults to True).
+    - ``check_few_shot_leakage``: whether the few-shot-leakage trap compares
+      few-shot example text against held-out dataset items (defaults to
+      True). Disable for tasks where few-shot inputs are intentionally
+      drawn from the eval distribution and that is acceptable.
     """
 
     min_test_items_high: int = 10
@@ -73,6 +77,7 @@ class TrapPolicy:
     rubric_concentration_threshold: float = 0.70
     small_budget_axis_limit: int = 5
     fail_on_missing_test: bool = True
+    check_few_shot_leakage: bool = True
 
     @classmethod
     def from_json_file(cls, path: str | Path) -> "TrapPolicy":
@@ -283,6 +288,25 @@ CALIBRATION_TRAPS: tuple[TrapPattern, ...] = (
             "(OpenRouter / Together / Fireworks / Groq / Bedrock / etc.); "
             "the underlying served model's family is not visible to the "
             "self-agreement-bias check, so the bias signal is unreliable."
+        ),
+    ),
+    TrapPattern(
+        id="few_shot_leakage_into_test",
+        hypothesis=(
+            "A few-shot example baked into every prompt variant shares its "
+            "input (or output) with a held-out dataset item; the model has "
+            "effectively seen the answer at inference time, so the evaluation "
+            "score is inflated by memorisation rather than generalisation."
+        ),
+    ),
+    TrapPattern(
+        id="rubric_dead_weight_dimension",
+        hypothesis=(
+            "A rubric dimension carries zero weight while another dimension "
+            "is weighted; the dead dimension is still sent to the judge "
+            "verbatim (spending tokens and judge attention) but contributes "
+            "nothing to fitness, so it dilutes the judge without affecting "
+            "the score it is optimised against."
         ),
     ),
 )
@@ -773,6 +797,191 @@ def _check_routed_provider(
     )
 
 
+def _normalize_example_field(value: object) -> str:
+    """Lowercased, whitespace-collapsed string view of a few-shot field.
+
+    Few-shot examples are plain dicts (``{"input": ..., "output": ...}``);
+    the values are usually strings but can be numbers or nested structures.
+    We compare on a normalized string form so ``"1+1"`` and ``" 1+1 "``
+    collide, while non-string payloads still compare structurally.
+    """
+    if value is None:
+        return ""
+    return " ".join(str(value).split()).lower()
+
+
+def _check_few_shot_leakage(
+    variants: PromptVariants,
+    train_dataset: Dataset,
+    test_dataset: Dataset | None,
+    policy: TrapPolicy = _DEFAULT_POLICY,
+) -> AnalyticalFinding:
+    """Detect few-shot examples whose text overlaps the eval dataset.
+
+    ``PromptVariants.few_shot_examples`` are concatenated into every prompt
+    variant, so they are part of what the model sees at inference. If a
+    few-shot example's ``input`` (or ``output``) is identical to a dataset
+    item's ``input`` or ``reference``, the model has been handed the answer
+    for that item — the score it earns there reflects memorisation, not
+    generalisation. This is distinct from ``train_test_id_overlap``, which
+    only compares item *ids* and never looks at few-shot content.
+
+    Severity: overlap with the held-out *test* slice is HIGH (it directly
+    corrupts the generalisation read); overlap with *train* only is MEDIUM
+    (still inflates training fitness, but train is expected to be seen).
+    """
+    trap = next(t for t in CALIBRATION_TRAPS if t.id == "few_shot_leakage_into_test")
+    if not policy.check_few_shot_leakage:
+        return _finding(
+            trap,
+            label="GHOST",
+            severity=PreflightSeverity.LOW,
+            note="Few-shot leakage check disabled via policy.",
+        )
+
+    examples = list(variants.few_shot_examples or [])
+    if not examples:
+        return _finding(
+            trap,
+            label="GHOST",
+            severity=PreflightSeverity.LOW,
+            note="No few-shot examples in variants; no leakage path.",
+        )
+
+    # Collect the normalized text a few-shot example exposes to the model.
+    shot_texts: set[str] = set()
+    for ex in examples:
+        if not isinstance(ex, dict):
+            continue
+        for key in ("input", "output"):
+            norm = _normalize_example_field(ex.get(key))
+            if norm:
+                shot_texts.add(norm)
+    if not shot_texts:
+        return _finding(
+            trap,
+            label="GHOST",
+            severity=PreflightSeverity.LOW,
+            note="Few-shot examples carry no comparable input/output text.",
+        )
+
+    def _hits(dataset: Dataset | None) -> list[str]:
+        if dataset is None:
+            return []
+        hit_ids: list[str] = []
+        for item in dataset.items:
+            item_texts = {
+                _normalize_example_field(item.input),
+                _normalize_example_field(item.reference),
+            }
+            item_texts.discard("")
+            if item_texts & shot_texts:
+                hit_ids.append(item.id)
+        return hit_ids
+
+    test_hits = _hits(test_dataset)
+    if test_hits:
+        sample = ", ".join(test_hits[:5])
+        more = f" (+{len(test_hits) - 5} more)" if len(test_hits) > 5 else ""
+        return _finding(
+            trap,
+            label="REAL",
+            severity=PreflightSeverity.HIGH,
+            note=(
+                f"{len(test_hits)} held-out test item(s) match a few-shot "
+                f"example baked into every prompt: {sample}{more}. The model "
+                "sees the answer at inference time; the generalisation score "
+                "is inflated by memorisation."
+            ),
+            remediation=(
+                "Remove the overlapping items from the test slice, or draw "
+                "few-shot examples from a disjoint pool that never appears in "
+                "the eval set."
+            ),
+            cite=f"leaked test ids: {sample}{more}",
+        )
+
+    train_hits = _hits(train_dataset)
+    if train_hits:
+        sample = ", ".join(train_hits[:5])
+        more = f" (+{len(train_hits) - 5} more)" if len(train_hits) > 5 else ""
+        return _finding(
+            trap,
+            label="REAL",
+            severity=PreflightSeverity.MEDIUM,
+            note=(
+                f"{len(train_hits)} train item(s) match a baked-in few-shot "
+                f"example: {sample}{more}. Training fitness is inflated by "
+                "examples the model was already handed."
+            ),
+            remediation=(
+                "Draw few-shot examples from a pool disjoint from the train "
+                "slice so fitness reflects reasoning, not recall."
+            ),
+            cite=f"leaked train ids: {sample}{more}",
+        )
+
+    return _finding(
+        trap,
+        label="GHOST",
+        severity=PreflightSeverity.LOW,
+        note=(
+            f"None of {len(shot_texts)} few-shot text(s) match any train or "
+            "test item; no leakage path."
+        ),
+    )
+
+
+def _check_rubric_dead_weight(rubric: JudgeRubric) -> AnalyticalFinding:
+    """Detect rubric dimensions that carry zero weight.
+
+    ``JudgeRubric`` only requires that the *sum* of dimension weights is
+    positive, so an individual ``Dimension`` may legally have
+    ``weight == 0.0``. Such a dimension is still serialised into the judge
+    prompt verbatim (``Dimension.description`` is "fed verbatim to the
+    judge prompt"), so it spends judge tokens and attention — but
+    ``normalized_weights()`` gives it 0.0, so it contributes nothing to the
+    fitness the calibration optimises against. The usual cause is a typo or
+    a half-finished edit where the author meant the dimension to count.
+
+    Only fires when at least one *other* dimension is weighted (otherwise
+    the rubric would be all-zero and ``JudgeRubric`` rejects it at
+    construction). Deterministic; reads only the supplied rubric.
+    """
+    trap = next(t for t in CALIBRATION_TRAPS if t.id == "rubric_dead_weight_dimension")
+    dead = [dim.name for dim in rubric.dimensions if dim.weight == 0.0]
+    weighted = [dim.name for dim in rubric.dimensions if dim.weight > 0.0]
+    if dead and weighted:
+        sample = ", ".join(dead[:5])
+        more = f" (+{len(dead) - 5} more)" if len(dead) > 5 else ""
+        return _finding(
+            trap,
+            label="REAL",
+            severity=PreflightSeverity.MEDIUM,
+            note=(
+                f"{len(dead)} rubric dimension(s) carry zero weight while "
+                f"{len(weighted)} are weighted: {sample}{more}. The dead "
+                "dimension is still sent to the judge (spending tokens and "
+                "attention) but does not affect the fitness score."
+            ),
+            remediation=(
+                "Give the dimension a non-zero weight if it should count, or "
+                "remove it from the rubric so the judge is not asked to score "
+                "an axis that is thrown away."
+            ),
+            cite=f"zero-weight dimensions: {sample}{more}",
+        )
+    return _finding(
+        trap,
+        label="GHOST",
+        severity=PreflightSeverity.LOW,
+        note=(
+            f"All {len(rubric.dimensions)} rubric dimension(s) carry "
+            "non-zero weight; none are dead."
+        ),
+    )
+
+
 def _check_no_held_out(has_test_slice: bool) -> AnalyticalFinding:
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "no_held_out_slice")
     if not has_test_slice:
@@ -836,6 +1045,8 @@ def analytical_preflight(
         _check_no_held_out(has_test_slice=test_dataset is not None),
         _check_dataset_leakage(train_dataset, test_dataset),
         _check_routed_provider(target_provider, judge_provider),
+        _check_few_shot_leakage(variants, train_dataset, test_dataset, policy=pol),
+        _check_rubric_dead_weight(rubric),
     ]
     return findings
 
