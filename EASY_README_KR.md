@@ -4,9 +4,15 @@
 
 ## 이게 뭔가요?
 
-`mini-antemortem-cli`는 `omegaprompt` calibration config를 위한 deterministic preflight checker입니다. 로컬 config 입력을 읽고, 9개 built-in trap pattern을 검사한 뒤 `AnalyticalFinding`을 반환합니다. API key 없음, live provider 호출 없음, network 없음.
+`mini-antemortem-cli`는 프롬프트 평가 셋업에 숨은 함정(train/test 누수, judge 편향, 동질적 variant 등)이 가짜 합격 점수를 만들기 전에 잡아내는 결정론적 linter입니다. 로컬 `omegaprompt` calibration config 입력을 읽고, 11개 built-in trap pattern을 검사한 뒤 `AnalyticalFinding`을 반환합니다. API key 없음, live provider 호출 없음, network 없음. `omegaprompt`와 함께 동작하며 단독 config linter로도 유용합니다.
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
+
+## 0.10.0의 새로운 점
+
+- 새 trap 규칙 2개 — 이제 count는 11개(이전 9개): `few_shot_leakage_into_test`(prompt에 박힌 few-shot example이 held-out 항목과 겹침), `rubric_dead_weight_dimension`(weight 0인데 judge는 여전히 채점하는 rubric dimension).
+- claim-drift 수정: trap count가 이제 모든 곳에서 일관됩니다(한 곳은 *nine*, 다른 곳은 *seven*이었음). source of truth는 `analytical_traps()`이며 consistency check가 drift 시 빌드를 실패시킵니다.
+- 버전 무관 publish 워크플로: release tag, `pyproject` 버전, `__init__` 버전이 일치해야 빌드가 publish됩니다.
 
 ## 0.9.1의 새로운 점
 
@@ -45,6 +51,8 @@ mini-antemortem-cli-mcp
 - `no_held_out_slice`
 - `train_test_id_overlap`
 - `routed_provider_opaque_family`
+- `few_shot_leakage_into_test`
+- `rubric_dead_weight_dimension`
 
 소스 기반 count와 hypothesis는 여기에서 생성됩니다: [docs/generated/claims_kr.md](docs/generated/claims_kr.md).
 
