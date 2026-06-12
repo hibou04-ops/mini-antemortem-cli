@@ -17,6 +17,11 @@ keywords = [
     "analytical-audit",
     "omegaprompt",
     "omega-lock",
+    "llm-evaluation",
+    "prompt-engineering",
+    "linter",
+    "evals",
+    "mcp",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
