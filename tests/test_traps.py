@@ -6,7 +6,7 @@ from omegaprompt.domain.dataset import Dataset, DatasetItem
 from omegaprompt.domain.judge import Dimension, HardGate, JudgeRubric
 from omegaprompt.domain.params import PromptVariants
 from omegaprompt.preflight.contracts import PreflightSeverity
-from mini_antemortem_cli.traps import analytical_preflight, analytical_traps
+from mini_antemortem_cli.traps import TrapPolicy, analytical_preflight, analytical_traps
 
 
 def _rubric(dim_weights=None, gates=1) -> JudgeRubric:
@@ -60,6 +60,8 @@ def test_trap_registry_contains_all_expected():
         "no_held_out_slice",
         "train_test_id_overlap",
         "routed_provider_opaque_family",
+        "few_shot_leakage_into_test",
+        "rubric_dead_weight_dimension",
     }
 
 
@@ -568,3 +570,123 @@ def test_within_slice_duplicates_stay_medium():
     )
     f = _by_trap(findings, "train_test_id_overlap")
     assert f.severity == PreflightSeverity.MEDIUM
+
+
+# ---------------------------------------------------------------------------
+# 0.10.0: few_shot_leakage_into_test
+# ---------------------------------------------------------------------------
+
+
+def _variants_with_shot(shot_input: str, shot_output: str = "answer") -> PromptVariants:
+    return PromptVariants(
+        system_prompts=["Answer.", "Explain first.", "Check edges then answer."],
+        few_shot_examples=[{"input": shot_input, "output": shot_output}],
+    )
+
+
+def _kwargs(**over):
+    base = dict(
+        target_provider="openai",
+        target_model="gpt-4o",
+        judge_provider="anthropic",
+        judge_model="claude-opus-4-7",
+        train_dataset=_dataset(n=20),
+        test_dataset=_dataset(n=20),
+        rubric=_rubric(),
+        variants=_variants(),
+    )
+    base.update(over)
+    return base
+
+
+def test_few_shot_leakage_into_test_is_real_high():
+    test = Dataset(items=[DatasetItem(id="leak", input="What is 2+2?")] + [
+        DatasetItem(id=f"v{i}", input=f"eval {i}") for i in range(19)
+    ])
+    findings = analytical_preflight(
+        **_kwargs(test_dataset=test, variants=_variants_with_shot("What is 2+2?"))
+    )
+    f = _by_trap(findings, "few_shot_leakage_into_test")
+    assert f.label == "REAL"
+    assert f.severity == PreflightSeverity.HIGH
+    assert "leak" in (f.cite or "")
+
+
+def test_few_shot_leakage_into_train_only_is_real_medium():
+    train = Dataset(items=[DatasetItem(id="trleak", input="What is 2+2?")] + [
+        DatasetItem(id=f"t{i}", input=f"task {i}") for i in range(19)
+    ])
+    test = Dataset(items=[DatasetItem(id=f"v{i}", input=f"eval {i}") for i in range(20)])
+    findings = analytical_preflight(
+        **_kwargs(train_dataset=train, test_dataset=test, variants=_variants_with_shot("What is 2+2?"))
+    )
+    f = _by_trap(findings, "few_shot_leakage_into_test")
+    assert f.label == "REAL"
+    assert f.severity == PreflightSeverity.MEDIUM
+
+
+def test_few_shot_leakage_matches_on_reference_text():
+    # Overlap on the item's reference (not just input) also leaks the answer.
+    test = Dataset(items=[DatasetItem(id="rleak", input="distinct", reference="42")] + [
+        DatasetItem(id=f"v{i}", input=f"eval {i}") for i in range(19)
+    ])
+    findings = analytical_preflight(
+        **_kwargs(test_dataset=test, variants=_variants_with_shot("prompt", shot_output="42"))
+    )
+    f = _by_trap(findings, "few_shot_leakage_into_test")
+    assert f.label == "REAL"
+
+
+def test_few_shot_leakage_ghost_when_disjoint():
+    findings = analytical_preflight(**_kwargs(variants=_variants_with_shot("totally unrelated text")))
+    f = _by_trap(findings, "few_shot_leakage_into_test")
+    assert f.label == "GHOST"
+
+
+def test_few_shot_leakage_ghost_when_no_examples():
+    variants = PromptVariants(system_prompts=["a", "b", "c"], few_shot_examples=[])
+    findings = analytical_preflight(**_kwargs(variants=variants))
+    f = _by_trap(findings, "few_shot_leakage_into_test")
+    assert f.label == "GHOST"
+
+
+def test_few_shot_leakage_disabled_by_policy():
+    test = Dataset(items=[DatasetItem(id="leak", input="What is 2+2?")] + [
+        DatasetItem(id=f"v{i}", input=f"eval {i}") for i in range(19)
+    ])
+    findings = analytical_preflight(
+        **_kwargs(test_dataset=test, variants=_variants_with_shot("What is 2+2?")),
+        policy=TrapPolicy(check_few_shot_leakage=False),
+    )
+    f = _by_trap(findings, "few_shot_leakage_into_test")
+    assert f.label == "GHOST"
+
+
+# ---------------------------------------------------------------------------
+# 0.10.0: rubric_dead_weight_dimension
+# ---------------------------------------------------------------------------
+
+
+def test_rubric_dead_weight_is_real_medium():
+    findings = analytical_preflight(
+        **_kwargs(rubric=_rubric(dim_weights={"accuracy": 1.0, "clarity": 0.0}))
+    )
+    f = _by_trap(findings, "rubric_dead_weight_dimension")
+    assert f.label == "REAL"
+    assert f.severity == PreflightSeverity.MEDIUM
+    assert "clarity" in (f.cite or "")
+
+
+def test_rubric_dead_weight_ghost_when_all_weighted():
+    findings = analytical_preflight(
+        **_kwargs(rubric=_rubric(dim_weights={"accuracy": 0.6, "clarity": 0.4}))
+    )
+    f = _by_trap(findings, "rubric_dead_weight_dimension")
+    assert f.label == "GHOST"
+
+
+def test_rubric_dead_weight_ghost_for_single_dimension():
+    # A single weighted dimension is not "dead weight" — it carries everything.
+    findings = analytical_preflight(**_kwargs(rubric=_rubric(dim_weights={"accuracy": 1.0})))
+    f = _by_trap(findings, "rubric_dead_weight_dimension")
+    assert f.label == "GHOST"
