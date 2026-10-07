@@ -13,6 +13,29 @@ pip install mini-antemortem-cli
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
+## Start here · Standalone use · Integration/Docking
+
+**Omega Aile** — Quiet precision. AI research guided by evidence.
+
+Lint calibration config for deterministic structural traps without calling a model, then optionally pass its findings to the omegaprompt adaptation plan.
+
+Requires Python 3.11+. Installation needs internet.
+
+```bash
+python -m pip install mini-antemortem-cli==0.10.1
+mini-antemortem-cli --version
+mini-antemortem-cli list-traps --json
+```
+
+The offline registry prints the built-in trap records and exits 0. For actual config analysis use check with train/test JSONL, rubric and variants JSON; the existing demo fixtures are linked below. Advisory check can exit 0 with serious findings; --fail-on-severity enables the policy gate (exit 1). Bad configuration exits 2.
+
+omegaprompt>=1.1.0 is required and installed automatically; a calibration run is optional. The supported current combination is omegaprompt 2.1.2. Validate check JSON findings as AnalyticalFinding objects, wrap them in PreflightReport, then derive_adaptation_plan. This is separate from antemortem, which verifies repository citations.
+
+[Docking contracts and runnable data handoff](https://github.com/hibou04-ops/omega-lock/blob/main/DOCKING.md) · [Full guide](README.md).
+
+MCP: install the distribution with `[mcp]` and use its existing server executable. FastMCP support is bounded to MCP SDK `>=1.0.0,<2.0.0`; the tool names and schemas are unchanged.
+
+
 ## What's New in 0.10.0
 
 - **Two new trap rules — the count is now 11 (was 9).** `few_shot_leakage_into_test` flags few-shot examples (baked into every prompt variant) whose `input`/`output` text matches a held-out test or train item — the model is handed the answer at inference time, so the score reflects memorisation, not generalisation (`REAL`/`HIGH` on test overlap, `REAL`/`MEDIUM` on train-only). `rubric_dead_weight_dimension` flags a rubric dimension with zero weight while another dimension is weighted — the dead axis is still sent to the judge (spending tokens and attention) but contributes nothing to fitness (`REAL`/`MEDIUM`). Both are deterministic and reachable through the real `omegaprompt` domain objects; the false-positive corpus grew to 53 cases (0/53) and golden cases cover both new traps.
@@ -162,7 +185,7 @@ python scripts/wheel_smoke_install.py dist/*.whl
 python scripts/publish_readiness.py --no-network
 ```
 
-These scripts do not publish, tag, or create GitHub releases. Publishing is only wired through [.github/workflows/publish.yml](.github/workflows/publish.yml) on `v*.*.*` tags or manual dispatch, using PyPI Trusted Publishing / GitHub OIDC with no token secret. Setup and sequencing are documented in [docs/release_checklist.md](docs/release_checklist.md).
+These scripts do not publish, tag, or create GitHub releases. Publishing is wired only through manual `workflow_dispatch` of [.github/workflows/publish.yml](.github/workflows/publish.yml), with an existing immutable `release_tag` such as `v0.10.1`. A tag push or GitHub Release does not trigger PyPI publication. The workflow uses Trusted Publishing / GitHub OIDC with no token secret; [docs/release_checklist.md](docs/release_checklist.md) records the exact sequence.
 
 ## License
 

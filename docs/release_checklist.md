@@ -18,9 +18,10 @@ External setup that cannot be verified from this repository:
 | Workflow filename | `publish.yml` |
 | Environment name | `pypi` |
 
-Create a GitHub Environment named `pypi` and require manual approval before the
-publish job runs. The workflow grants `id-token: write` only to the publish job.
-Normal CI never publishes.
+Use the existing GitHub Environment named `pypi` and preserve its configured
+protection rules. If required reviewers are configured, publication waits for
+their approval. The workflow grants `id-token: write` only to the publish job;
+normal CI never publishes. Do not bypass environment protection.
 
 ## Local Preflight
 
@@ -77,26 +78,30 @@ report `ENVIRONMENT_BLOCKED`.
 3. Create an annotated version tag using the `vMAJOR.MINOR.PATCH` format:
 
    ```bash
-   git tag -a v0.4.0 -m "mini-antemortem-cli v0.4.0"
+   git tag -a v0.10.1 -m "mini-antemortem-cli v0.10.1"
    ```
 
-4. Push the tag only after human approval:
+4. Push the tag after required checks and release authorization:
 
    ```bash
-   git push origin v0.4.0
+   git push origin v0.10.1
    ```
 
-5. GitHub Actions runs `.github/workflows/publish.yml` from the clean checkout
-   at that tag.
+5. Tag push alone does not publish. Dispatch the existing workflow from main,
+   passing the exact tag; it checks out that tag for verification and build:
+
+   ```bash
+   gh workflow run publish.yml --ref main -f release_tag=v0.10.1
+   ```
 6. The `verify-build` job runs deterministic tests, generated claims,
    repository consistency, demo replay, golden cases, fixture integrity,
    release audit, `python -m build`, wheel smoke install, and
    `publish_readiness.py --no-network`.
-7. The `publish` job waits for the `pypi` environment approval and then uses
+7. The `publish` job obeys the `pypi` environment rules and then uses
    `pypa/gh-action-pypi-publish` with Trusted Publishing. No password or token
    arguments are supplied.
 
-Manual dispatch is allowed only with an existing tag input such as `v0.4.0`.
+Manual dispatch is the only publish trigger, with an existing tag input.
 The workflow rejects refs that do not match `v*.*.*`.
 
 ## Rollback / Failure Notes
