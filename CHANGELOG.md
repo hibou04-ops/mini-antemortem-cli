@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.1 - 2026-10-08
+
+Bound FastMCP to SDK >=1,<2. Add an installed offline trap registry path and analytical findings handoff. Align README and release checklist with the existing manual workflow_dispatch/release_tag publish path.
+
+Compatibility: no renamed imports, CLI/MCP identifiers, schemas or relaxed gates.
+Upgrade with the same PyPI distribution name; MCP users reinstall its [mcp] extra.
+
+
 All notable changes to `mini-antemortem-cli` are documented here. This
 project adheres to [Semantic Versioning](https://semver.org/).
 
