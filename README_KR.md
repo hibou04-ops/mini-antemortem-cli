@@ -13,6 +13,27 @@ pip install mini-antemortem-cli
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` (`mini-antemortem-cli[mcp]`)
 
+## 시작 · 단독 사용 · 도킹
+
+**Omega Aile** — Quiet precision. AI research guided by evidence.
+
+모델 호출 없이 보정 설정의 구조적 함정을 분류합니다. 보정 실행 없이 쓸 수 있지만 omegaprompt 패키지는 필수입니다.
+
+Python 3.11 이상에서 실행합니다. 설치에는 인터넷이 필요합니다.
+
+```bash
+python -m pip install mini-antemortem-cli==0.10.1
+mini-antemortem-cli --version
+mini-antemortem-cli list-traps --json
+```
+
+list-traps는 내장 규칙을 출력하고 종료 0입니다. 실제 check에는 train/test JSONL·rubric·variants가 필요합니다. 기본 check는 advisory라 심각한 finding도 종료 0일 수 있습니다. --fail-on-severity는 정책 위반을 1, 입력 오류는 2로 처리합니다.
+
+[실제 연결 방식과 입력·출력](https://github.com/hibou04-ops/omega-lock/blob/main/DOCKING.md) · [전체 안내](README.md). 두 mini 도구의 현재 검증 조합은 omegaprompt 2.1.2이며, 별도 배포 패키지입니다.
+
+MCP는 해당 배포명의 `[mcp]` extras와 기존 서버 명령을 사용합니다. 기존 FastMCP 계약은 SDK `>=1.0.0,<2.0.0` 범위로 유지합니다.
+
+
 ## 0.10.0의 새로운 점
 
 - **새 trap 규칙 2개 — 이제 count는 11개(이전 9개).** `few_shot_leakage_into_test`는 모든 prompt variant에 들어가는 few-shot example의 `input`/`output` 텍스트가 held-out test 또는 train 항목과 일치하는 경우를 flag합니다 — 모델이 추론 시점에 답을 건네받은 셈이라 점수가 일반화가 아닌 암기를 반영합니다(test 겹침 시 `REAL`/`HIGH`, train만 겹치면 `REAL`/`MEDIUM`). `rubric_dead_weight_dimension`은 다른 dimension은 weight가 있는데 어떤 dimension의 weight가 0인 경우를 flag합니다 — 그 죽은 axis는 여전히 judge에게 전송되어(토큰과 주의를 소모) fitness에는 전혀 기여하지 않습니다(`REAL`/`MEDIUM`). 둘 다 결정론적이며 실제 `omegaprompt` 도메인 객체로 도달 가능합니다. false-positive corpus는 53건(0/53)으로 늘었고, 두 새 trap 모두 golden case로 커버됩니다.

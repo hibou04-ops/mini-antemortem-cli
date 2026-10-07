@@ -2,6 +2,27 @@
 
 [README.md](README.md)의 압축 버전입니다. English easy version: [EASY_README.md](EASY_README.md). 한국어 메인 README: [README_KR.md](README_KR.md).
 
+## 시작 · 단독 사용 · 도킹
+
+**Omega Aile** — Quiet precision. AI research guided by evidence.
+
+모델 호출 없이 보정 설정의 구조적 함정을 분류합니다. 보정 실행 없이 쓸 수 있지만 omegaprompt 패키지는 필수입니다.
+
+Python 3.11 이상에서 실행합니다. 설치에는 인터넷이 필요합니다.
+
+```bash
+python -m pip install mini-antemortem-cli==0.10.1
+mini-antemortem-cli --version
+mini-antemortem-cli list-traps --json
+```
+
+list-traps는 내장 규칙을 출력하고 종료 0입니다. 실제 check에는 train/test JSONL·rubric·variants가 필요합니다. 기본 check는 advisory라 심각한 finding도 종료 0일 수 있습니다. --fail-on-severity는 정책 위반을 1, 입력 오류는 2로 처리합니다.
+
+[실제 연결 방식과 입력·출력](https://github.com/hibou04-ops/omega-lock/blob/main/DOCKING.md) · [전체 안내](README.md). 두 mini 도구의 현재 검증 조합은 omegaprompt 2.1.2이며, 별도 배포 패키지입니다.
+
+MCP는 해당 배포명의 `[mcp]` extras와 기존 서버 명령을 사용합니다. 기존 FastMCP 계약은 SDK `>=1.0.0,<2.0.0` 범위로 유지합니다.
+
+
 ## 이게 뭔가요?
 
 `mini-antemortem-cli`는 프롬프트 평가 셋업에 숨은 함정(train/test 누수, judge 편향, 동질적 variant 등)이 가짜 합격 점수를 만들기 전에 잡아내는 결정론적 linter입니다. 로컬 `omegaprompt` calibration config 입력을 읽고, 11개 built-in trap pattern을 검사한 뒤 `AnalyticalFinding`을 반환합니다. API key 없음, live provider 호출 없음, network 없음. `omegaprompt`와 함께 동작하며 단독 config linter로도 유용합니다.
