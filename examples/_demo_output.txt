@@ -41,7 +41,7 @@ Summary: HOLD [high] - 3 REAL, 8 GHOST, 0 NEW, 0 UNRESOLVED
             Neither side names a known multi-vendor router; self-agreement-bias check operates on the declared families.
 
 [LOW]     GHOST      few_shot_leakage_into_test
-            None of 2 few-shot text(s) match any train or test item; no leakage path.
+            None of 1 few-shot input(s) match any train or test item; no leakage path.
 
 [LOW]     GHOST      rubric_dead_weight_dimension
             All 2 rubric dimension(s) carry non-zero weight; none are dead.

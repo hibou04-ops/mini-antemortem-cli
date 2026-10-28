@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0 - 2026-10-28
+
+few-shot 공유 출력 라벨·대소문자 식별자의 오탐을 교정하고 후보 pool과 실제 선택의 입력 노출을 구분합니다. 정책의 타입·범위·미지 키를 검증하고 missing-test 정책을 적용합니다. paired 재측정은 ID와 내용을 함께 확인합니다. 정확한 Jaccard 최대값이 확정되면 중복 비교를 종료하며 Windows fixture 재생성은 LF로 고정합니다.
+
+검증 범위와 호환성: [upgrade 0.11.0](docs/upgrade-0.11.0.md). 유료 provider/model 품질 검증과 전체 실행시간 배속은 주장하지 않습니다.
+
 ## 0.10.1 - 2026-10-08
 
 Bound FastMCP to SDK >=1,<2. Add an installed offline trap registry path and analytical findings handoff. Align README and release checklist with the existing manual workflow_dispatch/release_tag publish path.

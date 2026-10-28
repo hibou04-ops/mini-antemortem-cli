@@ -74,3 +74,7 @@ MCP server는 `analytical_preflight`, `list_traps`를 노출합니다. Path inpu
 ## Adaptation-Plan Compatibility
 
 Finding은 `omegaprompt.preflight.contracts.AnalyticalFinding` object로 emit됩니다. 이 패키지는 `AdaptationPlan`을 직접 mutate하지 않고, `omegaprompt`가 소비할 수 있는 input을 제공합니다.
+
+## 0.11.0 범위 정정
+
+상태·검증·호환성의 최신 계약은 [upgrade-0.11.0.md](upgrade-0.11.0.md)에 있습니다. 출력 라벨만의 일치는 입력 노출의 증거가 아닙니다. pool 잠재 노출과 명시한 선택의 실제 입력 노출을 구분합니다. paired 재측정은 독립 holdout 일반화가 아니며 내용 충돌·부분 ID 겹침을 면제하지 않습니다.
