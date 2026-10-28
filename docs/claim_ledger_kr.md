@@ -18,3 +18,12 @@ Status marker: `generated`, `source-backed`, `command-backed`, `artifact-backed`
 | Fixture integrity는 SHA-256으로 check. | README, release docs | `benchmarks/golden_cases/manifest.sha256` | `python scripts/verify_fixture_integrity.py` | artifact-backed |
 | Disk-verified file:line citation 지원. | README | 이 package에는 없음 | None | not-claimed |
 | Provider/model superiority 증명. | README | 구현하지 않음 | None | not-claimed |
+
+## 0.11.0 검증된 추가 계약
+
+| 주장 | 근거 | 재현 | 상태 |
+|---|---|---|---|
+| 개발 사례 7개에서 label/식별자 오탐 4개 교정, 실제 입력 노출 2개 유지 | `benchmarks/upgrade-0.11.0/*.json` | `python benchmarks/precision_cost.py` | artifact-backed |
+| 1,000개 같은 prompt의 최대값1 유지, 정규화1회·union/intersection0회 | `benchmarks/precision_cost.py` | `python benchmarks/precision_cost.py` | command-backed |
+| 정책 오류·missing test·paired 내용 확인·선택된 입력 노출 | `tests/test_precision_contracts.py` | `python -m pytest -q tests/test_precision_contracts.py` | source-backed |
+| 일반 오탐률/실제 모델 품질 개선 | 확립되지 않음 | 해당 없음 | not-claimed |

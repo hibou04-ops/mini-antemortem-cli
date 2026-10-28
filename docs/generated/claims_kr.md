@@ -10,7 +10,7 @@
 | PyPI distribution | `mini-antemortem-cli` |
 | Install command | `pip install mini-antemortem-cli` |
 | Python import package | `mini_antemortem_cli` |
-| Package version | `0.10.1` |
+| Package version | `0.11.0` |
 | CLI command | `mini-antemortem-cli` |
 | CLI subcommands | `check, list-traps` |
 | MCP extra | `mcp` |
@@ -29,7 +29,7 @@
 - `no_held_out_slice`: User did not pass --test; walk-forward cannot run; ship decision has no generalisation evidence.
 - `train_test_id_overlap`: Items appear in both train and test, or duplicate ids exist within either slice; KC-4 / per-item correlation reads on a leaked dataset are meaningless.
 - `routed_provider_opaque_family`: Target or judge is named as a multi-vendor routing aggregator (OpenRouter / Together / Fireworks / Groq / Bedrock / etc.); the underlying served model's family is not visible to the self-agreement-bias check, so the bias signal is unreliable.
-- `few_shot_leakage_into_test`: A few-shot example baked into every prompt variant shares its input (or output) with a held-out dataset item; the model has effectively seen the answer at inference time, so the evaluation score is inflated by memorisation rather than generalisation.
+- `few_shot_leakage_into_test`: A few-shot input matches an evaluation input. The candidate pool has potential exposure; explicitly selected examples establish actual input exposure. A shared output label alone is not evidence that the evaluation input or its answer was disclosed.
 - `rubric_dead_weight_dimension`: A rubric dimension carries zero weight while another dimension is weighted; the dead dimension is still sent to the judge verbatim (spending tokens and judge attention) but contributes nothing to fitness, so it dilutes the judge without affecting the score it is optimised against.
 
 ## 검증 명령

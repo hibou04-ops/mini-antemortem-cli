@@ -22,7 +22,7 @@ Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · 
 Python 3.11 이상에서 실행합니다. 설치에는 인터넷이 필요합니다.
 
 ```bash
-python -m pip install mini-antemortem-cli==0.10.1
+python -m pip install mini-antemortem-cli==0.11.0
 mini-antemortem-cli --version
 mini-antemortem-cli list-traps --json
 ```
@@ -132,7 +132,7 @@ Source of truth: `src/mini_antemortem_cli/traps.py`의 `analytical_traps()`.
 | `no_held_out_slice` | test slice가 없어 walk-forward 검증 자체가 불가능한지. |
 | `train_test_id_overlap` | train/test ID가 겹치거나 중복돼 per-item 상관이 신뢰하기 어려운지. |
 | `routed_provider_opaque_family` | routed provider가 실제로 서빙되는 모델의 패밀리를 가려서 검사가 막히는지. |
-| `few_shot_leakage_into_test` | prompt에 박힌 few-shot example의 input/output이 held-out 항목과 겹쳐 암기로 점수가 부풀려지는지. |
+| `few_shot_leakage_into_test` | few-shot 입력이 평가 입력과 일치하는지. 후보 pool의 잠재 노출과 명시적으로 선택한 입력의 실제 노출을 구분하며 출력 라벨만의 중복은 누출로 보지 않음. |
 | `rubric_dead_weight_dimension` | 다른 dimension은 weight가 있는데 weight 0인 dimension이 있어 judge에게는 전송되나 점수에는 반영되지 않는지. |
 
 각 finding은 `REAL`, `GHOST`, `NEW`, `UNRESOLVED` 중 하나의 라벨과 `blocker`, `high`, `medium`, `low` 중 하나의 severity를 가집니다.
@@ -190,3 +190,13 @@ python scripts/publish_readiness.py --no-network
 Apache 2.0. [LICENSE](LICENSE)를 참고하세요.
 
 License 이력: PyPI 버전 0.1.0은 MIT `LICENSE` 파일로 배포되었습니다. 저장소는 2026-04-22(`d2d7eb7`)에 Apache 2.0으로 재라이선스되었으며, 0.2.0 이후 모든 버전은 Apache 2.0으로 배포됩니다. 0.1.0을 설치한 사용자는 그 사본에 한해 MIT 라이선스를 보유하며, 라이선스 변경은 소급 적용되지 않습니다.
+
+## 0.11.0: 입력 누출·정책·평가 목적을 구분
+
+- 서로 다른 입력의 공통 출력 라벨(`yes`, `positive`, `0`)은 누출로 판정하지 않습니다. 실제 입력 중복과 입력·정답 쌍 중복은 계속 감지합니다. 문자열은 Unicode NFC·공백을 정규화하고 대소문자를 보존합니다. 구조화 값 비교 helper는 타입과 dict key 순서를 다루지만, 현재 공개 `PromptVariants`는 few-shot 값을 문자열로 검증합니다.
+- `selected_few_shot_indices`/CLI `--selected-few-shot-indices`가 없으면 후보 pool의 **잠재 입력 노출**을 검사합니다. 선택 인덱스를 주면 해당 실행의 입력 노출만 검사합니다. 공통 출력만 있거나 의미상 유사한 입력을 분석하는 탐지기는 아닙니다.
+- `TrapPolicy.fail_on_missing_test=False`가 실제로 누락-test trap에 반영됩니다. holdout이 측정됐다는 뜻은 아닙니다. 알 수 없는 정책 키, 잘못된 타입, NaN·Inf, 범위 밖 threshold는 입력 오류입니다. 이전에 무시되던 오타 설정은 수정해야 합니다.
+- API/CLI/MCP `validation_mode`는 `auto`(기본), `paired`, `disjoint`입니다. `paired`이고 ID 집합·입력·reference가 모두 일치할 때만 반복측정 `UNRESOLVED/MEDIUM`으로 구분합니다. 일부 중복·내용 충돌은 계속 `REAL/BLOCKER`입니다. mode 변경은 일반화 성공이나 누출 면제 근거가 아닙니다.
+- 반복 prompt와 token 집합 중복은 정확한 최대 Jaccard가 1로 확정되면 종료합니다. 근사값이나 완화한 threshold를 쓰지 않습니다.
+
+[전후 근거·설정 이행·재현 명령](docs/upgrade-0.11.0.md). CLI 기본 실행은 결과 출력이며, `--fail-on-severity high`를 지정해야 품질 gate가 됩니다. 입력 오류는 2, 지정 gate 차단은 1입니다.
