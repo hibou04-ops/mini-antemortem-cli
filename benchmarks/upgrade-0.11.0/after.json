@@ -1,0 +1,56 @@
+{
+  "kind": "known development cases, not blinded/general population evidence",
+  "cases": [
+    {
+      "case": "actual_input",
+      "expected": "REAL",
+      "actual": "REAL",
+      "correct": true
+    },
+    {
+      "case": "same_pair",
+      "expected": "REAL",
+      "actual": "REAL",
+      "correct": true
+    },
+    {
+      "case": "label_yes",
+      "expected": "GHOST",
+      "actual": "GHOST",
+      "correct": true
+    },
+    {
+      "case": "label_positive",
+      "expected": "GHOST",
+      "actual": "GHOST",
+      "correct": true
+    },
+    {
+      "case": "label_zero",
+      "expected": "GHOST",
+      "actual": "GHOST",
+      "correct": true
+    },
+    {
+      "case": "lexical_overlap",
+      "expected": "GHOST",
+      "actual": "GHOST",
+      "correct": true
+    },
+    {
+      "case": "case_identifier",
+      "expected": "GHOST",
+      "actual": "GHOST",
+      "correct": true
+    }
+  ],
+  "correct": 7,
+  "total": 7,
+  "duplicate_workload": {
+    "prompts": 1000,
+    "exact_maximum": 1.0,
+    "tokenizations": 1,
+    "union_allocations": 0,
+    "intersections": 0
+  }
+}

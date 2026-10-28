@@ -11,7 +11,7 @@ Lint calibration config for deterministic structural traps without calling a mod
 Requires Python 3.11+. Installation needs internet.
 
 ```bash
-python -m pip install mini-antemortem-cli==0.10.1
+python -m pip install mini-antemortem-cli==0.11.0
 mini-antemortem-cli --version
 mini-antemortem-cli list-traps --json
 ```
@@ -121,3 +121,13 @@ Use `analytical_preflight(...)` before calibration, then pass the findings into 
 - Use `omegaprompt` for the actual calibration engine.
 
 License: Apache 2.0.
+
+## 0.11.0: 입력 누출·정책·평가 목적을 구분
+
+- 서로 다른 입력의 공통 출력 라벨(`yes`, `positive`, `0`)은 누출로 판정하지 않습니다. 실제 입력 중복과 입력·정답 쌍 중복은 계속 감지합니다. 문자열은 Unicode NFC·공백을 정규화하고 대소문자를 보존합니다. 구조화 값 비교 helper는 타입과 dict key 순서를 다루지만, 현재 공개 `PromptVariants`는 few-shot 값을 문자열로 검증합니다.
+- `selected_few_shot_indices`/CLI `--selected-few-shot-indices`가 없으면 후보 pool의 **잠재 입력 노출**을 검사합니다. 선택 인덱스를 주면 해당 실행의 입력 노출만 검사합니다. 공통 출력만 있거나 의미상 유사한 입력을 분석하는 탐지기는 아닙니다.
+- `TrapPolicy.fail_on_missing_test=False`가 실제로 누락-test trap에 반영됩니다. holdout이 측정됐다는 뜻은 아닙니다. 알 수 없는 정책 키, 잘못된 타입, NaN·Inf, 범위 밖 threshold는 입력 오류입니다. 이전에 무시되던 오타 설정은 수정해야 합니다.
+- API/CLI/MCP `validation_mode`는 `auto`(기본), `paired`, `disjoint`입니다. `paired`이고 ID 집합·입력·reference가 모두 일치할 때만 반복측정 `UNRESOLVED/MEDIUM`으로 구분합니다. 일부 중복·내용 충돌은 계속 `REAL/BLOCKER`입니다. mode 변경은 일반화 성공이나 누출 면제 근거가 아닙니다.
+- 반복 prompt와 token 집합 중복은 정확한 최대 Jaccard가 1로 확정되면 종료합니다. 근사값이나 완화한 threshold를 쓰지 않습니다.
+
+[전후 근거·설정 이행·재현 명령](docs/upgrade-0.11.0.md). CLI 기본 실행은 결과 출력이며, `--fail-on-severity high`를 지정해야 품질 gate가 됩니다. 입력 오류는 2, 지정 gate 차단은 1입니다.

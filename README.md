@@ -22,7 +22,7 @@ Lint calibration config for deterministic structural traps without calling a mod
 Requires Python 3.11+. Installation needs internet.
 
 ```bash
-python -m pip install mini-antemortem-cli==0.10.1
+python -m pip install mini-antemortem-cli==0.11.0
 mini-antemortem-cli --version
 mini-antemortem-cli list-traps --json
 ```
@@ -38,7 +38,7 @@ MCP: install the distribution with `[mcp]` and use its existing server executabl
 
 ## What's New in 0.10.0
 
-- **Two new trap rules — the count is now 11 (was 9).** `few_shot_leakage_into_test` flags few-shot examples (baked into every prompt variant) whose `input`/`output` text matches a held-out test or train item — the model is handed the answer at inference time, so the score reflects memorisation, not generalisation (`REAL`/`HIGH` on test overlap, `REAL`/`MEDIUM` on train-only). `rubric_dead_weight_dimension` flags a rubric dimension with zero weight while another dimension is weighted — the dead axis is still sent to the judge (spending tokens and attention) but contributes nothing to fitness (`REAL`/`MEDIUM`). Both are deterministic and reachable through the real `omegaprompt` domain objects; the false-positive corpus grew to 53 cases (0/53) and golden cases cover both new traps.
+- **Two new trap rules — the count is now 11 (was 9).** `few_shot_leakage_into_test` flags normalized few-shot **input** matches with evaluation inputs. Shared output labels alone do not establish leakage. Pool exposure is potential unless selected indices are supplied (`REAL`/`HIGH` on test overlap, `REAL`/`MEDIUM` on train-only). `rubric_dead_weight_dimension` flags a rubric dimension with zero weight while another dimension is weighted — the dead axis is still sent to the judge (spending tokens and attention) but contributes nothing to fitness (`REAL`/`MEDIUM`). Both are deterministic and reachable through the real `omegaprompt` domain objects; the false-positive corpus grew to 53 cases (0/53) and golden cases cover both new traps.
 - **Claim-drift correction (fix).** The package previously described its trap count inconsistently — `pyproject` said *nine* while the GitHub repository description said *seven*. The source of truth is `analytical_traps()`, which now returns 11; every reference (`pyproject`, all four READMEs, the `__init__` docstring, the MCP server instructions, the generated claim docs) is regenerated from that single source, and `scripts/check_repo_consistency.py` fails the build on any future drift. The GitHub repository description is also corrected to match.
 - **Version-agnostic publish workflow (fix).** `.github/workflows/publish.yml` now reads the version from `pyproject.toml` (via `tomllib`) and asserts that the release tag and `__init__.__version__` match it before building, so a tag/metadata mismatch fails fast instead of silently publishing the wrong version.
 
@@ -134,7 +134,7 @@ Source of truth: `src/mini_antemortem_cli/traps.py` via `analytical_traps()`.
 | `no_held_out_slice` | No test slice is provided, so walk-forward validation cannot run. |
 | `train_test_id_overlap` | Train/test IDs overlap or duplicate IDs make per-item correlation unreliable. |
 | `routed_provider_opaque_family` | A routed provider obscures the underlying served-model family. |
-| `few_shot_leakage_into_test` | A baked-in few-shot example shares its input/output with a held-out item, inflating the score by memorisation. |
+| `few_shot_leakage_into_test` | A few-shot input matches an evaluation input; distinguish potential pool exposure from explicit selected input exposure. |
 | `rubric_dead_weight_dimension` | A rubric dimension carries zero weight while another is weighted, so it is judged but never counted. |
 
 Each finding is one of `REAL`, `GHOST`, `NEW`, or `UNRESOLVED` and carries severity `blocker`, `high`, `medium`, or `low`.
@@ -185,10 +185,20 @@ python scripts/wheel_smoke_install.py dist/*.whl
 python scripts/publish_readiness.py --no-network
 ```
 
-These scripts do not publish, tag, or create GitHub releases. Publishing is wired only through manual `workflow_dispatch` of [.github/workflows/publish.yml](.github/workflows/publish.yml), with an existing immutable `release_tag` such as `v0.10.1`. A tag push or GitHub Release does not trigger PyPI publication. The workflow uses Trusted Publishing / GitHub OIDC with no token secret; [docs/release_checklist.md](docs/release_checklist.md) records the exact sequence.
+These scripts do not publish, tag, or create GitHub releases. Publishing is wired only through manual `workflow_dispatch` of [.github/workflows/publish.yml](.github/workflows/publish.yml), with an existing immutable `release_tag` such as `v0.11.0`. A tag push or GitHub Release does not trigger PyPI publication. The workflow uses Trusted Publishing / GitHub OIDC with no token secret; [docs/release_checklist.md](docs/release_checklist.md) records the exact sequence.
 
 ## License
 
 Apache 2.0. See [LICENSE](LICENSE).
 
 License history: PyPI distributions of version 0.1.0 were shipped with an MIT `LICENSE` file. The repository was relicensed to Apache 2.0 on 2026-04-22 (commit `d2d7eb7`); 0.2.0 and later versions ship under Apache 2.0. Anyone who installed 0.1.0 holds an MIT license to that copy; license changes do not apply retroactively.
+
+## 0.11.0: 입력 누출·정책·평가 목적을 구분
+
+- 서로 다른 입력의 공통 출력 라벨(`yes`, `positive`, `0`)은 누출로 판정하지 않습니다. 실제 입력 중복과 입력·정답 쌍 중복은 계속 감지합니다. 문자열은 Unicode NFC·공백을 정규화하고 대소문자를 보존합니다. 구조화 값 비교 helper는 타입과 dict key 순서를 다루지만, 현재 공개 `PromptVariants`는 few-shot 값을 문자열로 검증합니다.
+- `selected_few_shot_indices`/CLI `--selected-few-shot-indices`가 없으면 후보 pool의 **잠재 입력 노출**을 검사합니다. 선택 인덱스를 주면 해당 실행의 입력 노출만 검사합니다. 공통 출력만 있거나 의미상 유사한 입력을 분석하는 탐지기는 아닙니다.
+- `TrapPolicy.fail_on_missing_test=False`가 실제로 누락-test trap에 반영됩니다. holdout이 측정됐다는 뜻은 아닙니다. 알 수 없는 정책 키, 잘못된 타입, NaN·Inf, 범위 밖 threshold는 입력 오류입니다. 이전에 무시되던 오타 설정은 수정해야 합니다.
+- API/CLI/MCP `validation_mode`는 `auto`(기본), `paired`, `disjoint`입니다. `paired`이고 ID 집합·입력·reference가 모두 일치할 때만 반복측정 `UNRESOLVED/MEDIUM`으로 구분합니다. 일부 중복·내용 충돌은 계속 `REAL/BLOCKER`입니다. mode 변경은 일반화 성공이나 누출 면제 근거가 아닙니다.
+- 반복 prompt와 token 집합 중복은 정확한 최대 Jaccard가 1로 확정되면 종료합니다. 근사값이나 완화한 threshold를 쓰지 않습니다.
+
+[전후 근거·설정 이행·재현 명령](docs/upgrade-0.11.0.md). CLI 기본 실행은 결과 출력이며, `--fail-on-severity high`를 지정해야 품질 gate가 됩니다. 입력 오류는 2, 지정 gate 차단은 1입니다.

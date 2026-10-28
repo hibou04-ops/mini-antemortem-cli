@@ -117,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
 
     output = build_demo_output()
     if args.update:
-        EXPECTED_PATH.write_text(output, encoding="utf-8")
+        EXPECTED_PATH.write_text(output, encoding="utf-8", newline="\n")
         print(f"updated {EXPECTED_PATH.relative_to(ROOT).as_posix()}")
         return 0
 
