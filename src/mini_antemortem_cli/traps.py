@@ -297,9 +297,10 @@ CALIBRATION_TRAPS: tuple[TrapPattern, ...] = (
     TrapPattern(
         id="train_test_id_overlap",
         hypothesis=(
-            "Items appear in both train and test, or duplicate ids exist "
-            "within either slice; KC-4 / per-item correlation reads on a "
-            "leaked dataset are meaningless."
+            "Shared ids or input content do not establish independent holdout "
+            "evidence. Identical-case paired remeasurement describes repeat "
+            "agreement only; duplicate ids also make observation identity "
+            "ambiguous. Check the declared evaluation mode and content."
         ),
     ),
     TrapPattern(
@@ -703,12 +704,11 @@ def _check_dataset_leakage(
 ) -> AnalyticalFinding:
     """Detect train/test ID overlap and duplicate IDs within either slice.
 
-    Per-item correlation (Pearson KC-4) and walk-forward generalisation
-    rely on test items being unseen during train. An overlap silently
-    inflates correlation; the calibration looks like it generalises
-    when it has memorised. This trap is deterministic, cheap to run,
-    and exposes the failure that no statistical check would catch
-    later.
+    Independent holdout claims require previously unused evaluation inputs.
+    Paired correlation instead describes repeated observations of the same
+    cases. Check ids and content to distinguish those purposes; overlap alone
+    does not establish memorisation or make repeated-observation correlation
+    mathematically invalid.
     """
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "train_test_id_overlap")
     train_ids = [item.id for item in train_dataset.items]
