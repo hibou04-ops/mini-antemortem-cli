@@ -82,6 +82,8 @@ def _build_parser() -> argparse.ArgumentParser:
     check.add_argument("--target-model", default=None)
     check.add_argument("--judge-provider", required=True)
     check.add_argument("--judge-model", default=None)
+    check.add_argument("--validation-mode", choices=["auto", "paired", "disjoint"], default="auto")
+    check.add_argument("--selected-few-shot-indices", type=int, nargs="*", default=None, help="Actual selected pool indices; omit to inspect potential pool exposure.")
     check.add_argument(
         "--train",
         required=True,
@@ -119,7 +121,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Optional TrapPolicy JSON file overriding default thresholds "
             "(min_test_items_high, near_duplicate_jaccard, etc.). Field names "
-            "match TrapPolicy dataclass; unknown fields are ignored."
+            "match TrapPolicy dataclass; unknown fields and invalid values are input errors."
         ),
     )
     check.add_argument(
@@ -319,18 +321,24 @@ def _run_check(args: argparse.Namespace) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return _CONFIG_ERROR_EXIT
 
-    findings = analytical_preflight(
-        target_provider=args.target_provider,
-        target_model=args.target_model,
-        judge_provider=args.judge_provider,
-        judge_model=args.judge_model,
-        train_dataset=train,
-        test_dataset=test,
-        rubric=rubric,
-        variants=variants,
-        judge_output_budget=args.judge_output_budget,
-        policy=policy,
-    )
+    try:
+        findings = analytical_preflight(
+            target_provider=args.target_provider,
+            target_model=args.target_model,
+            judge_provider=args.judge_provider,
+            judge_model=args.judge_model,
+            train_dataset=train,
+            test_dataset=test,
+            rubric=rubric,
+            variants=variants,
+            judge_output_budget=args.judge_output_budget,
+            policy=policy,
+            validation_mode=args.validation_mode,
+            selected_few_shot_indices=args.selected_few_shot_indices,
+        )
+    except ValueError as exc:
+        print(f"error: configuration: {exc}", file=sys.stderr)
+        return _CONFIG_ERROR_EXIT
 
     if args.json:
         print(_format_json(findings))

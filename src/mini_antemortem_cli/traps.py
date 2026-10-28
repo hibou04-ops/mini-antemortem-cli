@@ -14,6 +14,9 @@ the core pipeline can stand alone.
 from __future__ import annotations
 
 import json
+import math
+import unicodedata
+from typing import Literal, Sequence
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -79,10 +82,28 @@ class TrapPolicy:
     fail_on_missing_test: bool = True
     check_few_shot_leakage: bool = True
 
+    def __post_init__(self) -> None:
+        for name in ("min_test_items_high", "min_total_items_medium", "small_budget_axis_limit"):
+            value = getattr(self, name)
+            if type(value) is not int or value < 0:
+                raise ValueError(f"{name} must be a non-negative integer")
+        for name in ("near_duplicate_jaccard", "length_uniform_min_jaccard", "rubric_concentration_threshold"):
+            value = getattr(self, name)
+            if type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 1:
+                raise ValueError(f"{name} must be a finite number in [0, 1]")
+        for name in ("fail_on_missing_test", "check_few_shot_leakage"):
+            if type(getattr(self, name)) is not bool:
+                raise ValueError(f"{name} must be a boolean")
+
     @classmethod
     def from_json_file(cls, path: str | Path) -> "TrapPolicy":
         body = json.loads(Path(path).read_text(encoding="utf-8"))
-        return cls(**{k: v for k, v in body.items() if k in cls.__dataclass_fields__})
+        if not isinstance(body, dict):
+            raise ValueError("policy must be a JSON object")
+        unknown = sorted(set(body) - set(cls.__dataclass_fields__))
+        if unknown:
+            raise ValueError(f"unknown policy field(s): {', '.join(unknown)}")
+        return cls(**body)
 
 
 _DEFAULT_POLICY = TrapPolicy()
@@ -293,10 +314,10 @@ CALIBRATION_TRAPS: tuple[TrapPattern, ...] = (
     TrapPattern(
         id="few_shot_leakage_into_test",
         hypothesis=(
-            "A few-shot example baked into every prompt variant shares its "
-            "input (or output) with a held-out dataset item; the model has "
-            "effectively seen the answer at inference time, so the evaluation "
-            "score is inflated by memorisation rather than generalisation."
+            "A few-shot input matches an evaluation input. The candidate pool "
+            "has potential exposure; explicitly selected examples establish "
+            "actual input exposure. A shared output label alone is not evidence "
+            "that the evaluation input or its answer was disclosed."
         ),
     ),
     TrapPattern(
@@ -462,19 +483,26 @@ def _max_pairwise_jaccard(prompts: list[str]) -> float:
     """
     if len(prompts) < 2:
         return 0.0
-    token_sets = [_tokenize_for_jaccard(p) for p in prompts]
+    # A repeated nonempty token set fixes the exact maximum at 1.0.
+    # Normalize each distinct prompt once; do not approximate the maximum.
+    token_sets: list[frozenset[str]] = []
+    seen: set[frozenset[str]] = set()
+    for prompt, count in Counter(prompts).items():
+        tokens = frozenset(_tokenize_for_jaccard(prompt))
+        if tokens and (count > 1 or tokens in seen):
+            return 1.0
+        seen.add(tokens)
+        token_sets.append(tokens)
     best = 0.0
-    for i in range(len(token_sets)):
+    for i, a in enumerate(token_sets):
         for j in range(i + 1, len(token_sets)):
-            a, b = token_sets[i], token_sets[j]
-            if not a and not b:
-                continue
-            union = a | b
-            if not union:
-                continue
-            jaccard = len(a & b) / len(union)
-            if jaccard > best:
-                best = jaccard
+            b = token_sets[j]
+            intersection = len(a & b)
+            union_size = len(a) + len(b) - intersection
+            if union_size:
+                best = max(best, intersection / union_size)
+                if best == 1.0:
+                    return best
     return best
 
 
@@ -670,7 +698,8 @@ def _check_empty_reference(dataset: Dataset, rubric: JudgeRubric) -> AnalyticalF
 
 
 def _check_dataset_leakage(
-    train_dataset: Dataset, test_dataset: Dataset | None
+    train_dataset: Dataset, test_dataset: Dataset | None,
+    validation_mode: str = "auto",
 ) -> AnalyticalFinding:
     """Detect train/test ID overlap and duplicate IDs within either slice.
 
@@ -689,6 +718,14 @@ def _check_dataset_leakage(
     test_dupes = sorted({i for i, c in Counter(test_ids).items() if c > 1})
     overlap = sorted(set(train_ids) & set(test_ids))
 
+    if (validation_mode == "paired" and overlap and not train_dupes and not test_dupes
+            and set(train_ids) == set(test_ids)):
+        train_content = {i.id: (_normalize_example_field(i.input), _normalize_example_field(i.reference)) for i in train_dataset.items}
+        test_content = {i.id: (_normalize_example_field(i.input), _normalize_example_field(i.reference)) for i in test_dataset.items}
+        if train_content == test_content:
+            return _finding(trap, label="UNRESOLVED", severity=PreflightSeverity.MEDIUM,
+                note="Paired remeasurement uses the same ids and content. This measures repeated-observation agreement; independent holdout generalisation is not established.",
+                remediation="Use a separate, unused dataset for independent holdout claims.")
     if overlap:
         sample = ", ".join(overlap[:5])
         more = f" (+{len(overlap) - 5} more)" if len(overlap) > 5 else ""
@@ -703,16 +740,28 @@ def _check_dataset_leakage(
             severity=PreflightSeverity.BLOCKER,
             note=(
                 f"{len(overlap)} item id(s) appear in both train and test: "
-                f"{sample}{more}. Per-item correlation will be inflated by "
-                "memorisation."
+                f"{sample}{more}. These ids do not establish independent "
+                "holdout observations; inspect content and prior use."
             ),
             remediation=(
                 "Remove the overlapping ids from the test slice (or from "
-                "train) and re-run. ID disjointness is a hard prerequisite "
-                "for KC-4 power."
+                "train) for independent holdout evaluation. Use explicit paired "
+                "mode only for identical-case remeasurement."
             ),
             cite=f"overlapping ids: {sample}{more}",
         )
+    # Renaming an id cannot make a seen evaluation input independent.
+    # References alone are excluded: shared classification labels are benign.
+    train_inputs = {_normalize_example_field(item.input) for item in train_dataset.items}
+    train_inputs.discard("")
+    content_hits = [item.id for item in (test_dataset.items if test_dataset is not None else [])
+                    if _normalize_example_field(item.input) in train_inputs]
+    if content_hits:
+        sample = ", ".join(content_hits[:5])
+        return _finding(trap, label="REAL", severity=PreflightSeverity.BLOCKER,
+            note=f"{len(content_hits)} test input(s) duplicate train content despite disjoint ids: {sample}. Independent holdout is not established.",
+            remediation="Use evaluation inputs unused during training or selection; changing ids is insufficient.",
+            cite=f"content-overlap test ids: {sample}")
     if train_dupes or test_dupes:
         all_dupes = (train_dupes or []) + (test_dupes or [])
         sample = ", ".join(all_dupes[:5])
@@ -798,16 +847,28 @@ def _check_routed_provider(
 
 
 def _normalize_example_field(value: object) -> str:
-    """Lowercased, whitespace-collapsed string view of a few-shot field.
+    """Typed canonical form: NFC/whitespace strings, case preserved.
 
-    Few-shot examples are plain dicts (``{"input": ..., "output": ...}``);
-    the values are usually strings but can be numbers or nested structures.
-    We compare on a normalized string form so ``"1+1"`` and ``" 1+1 "``
-    collide, while non-string payloads still compare structurally.
+    JSON objects compare independently of key order; scalar types remain
+    distinct. A string containing JSON does not equal the JSON object.
     """
     if value is None:
         return ""
-    return " ".join(str(value).split()).lower()
+    def canonical(v):
+        if isinstance(v, str):
+            return ["str", " ".join(unicodedata.normalize("NFC", v).split())]
+        if isinstance(v, dict):
+            return ["dict", sorted((str(k), canonical(x)) for k, x in v.items())]
+        if isinstance(v, (list, tuple)):
+            return ["list", [canonical(x) for x in v]]
+        if v is None:
+            return ["null"]
+        if type(v) in (bool, int, float):
+            return [type(v).__name__, v]
+        raise ValueError(f"unsupported few-shot value type: {type(v).__name__}")
+    if isinstance(value, str) and not value.strip():
+        return ""
+    return json.dumps(canonical(value), ensure_ascii=False, allow_nan=False, separators=(",", ":"))
 
 
 def _check_few_shot_leakage(
@@ -815,16 +876,14 @@ def _check_few_shot_leakage(
     train_dataset: Dataset,
     test_dataset: Dataset | None,
     policy: TrapPolicy = _DEFAULT_POLICY,
+    selected_few_shot_indices: Sequence[int] | None = None,
 ) -> AnalyticalFinding:
     """Detect few-shot examples whose text overlaps the eval dataset.
 
-    ``PromptVariants.few_shot_examples`` are concatenated into every prompt
-    variant, so they are part of what the model sees at inference. If a
-    few-shot example's ``input`` (or ``output``) is identical to a dataset
-    item's ``input`` or ``reference``, the model has been handed the answer
-    for that item — the score it earns there reflects memorisation, not
-    generalisation. This is distinct from ``train_test_id_overlap``, which
-    only compares item *ids* and never looks at few-shot content.
+    Exact normalized input overlap establishes potential input exposure
+    in the candidate pool. Explicit selected indices narrow this to the
+    execution's selected examples. Output labels alone do not establish
+    leakage; no semantic or answer-only leakage detector is claimed.
 
     Severity: overlap with the held-out *test* slice is HIGH (it directly
     corrupts the generalisation read); overlap with *train* only is MEDIUM
@@ -840,6 +899,12 @@ def _check_few_shot_leakage(
         )
 
     examples = list(variants.few_shot_examples or [])
+    scope = "candidate pool (selection not supplied; potential exposure)"
+    if selected_few_shot_indices is not None:
+        if any(type(i) is not int or i < 0 or i >= len(examples) for i in selected_few_shot_indices):
+            raise ValueError("selected_few_shot_indices must contain valid non-negative pool indices")
+        examples = [examples[i] for i in dict.fromkeys(selected_few_shot_indices)]
+        scope = "explicitly selected examples (actual input exposure)"
     if not examples:
         return _finding(
             trap,
@@ -848,36 +913,16 @@ def _check_few_shot_leakage(
             note="No few-shot examples in variants; no leakage path.",
         )
 
-    # Collect the normalized text a few-shot example exposes to the model.
-    shot_texts: set[str] = set()
-    for ex in examples:
-        if not isinstance(ex, dict):
-            continue
-        for key in ("input", "output"):
-            norm = _normalize_example_field(ex.get(key))
-            if norm:
-                shot_texts.add(norm)
-    if not shot_texts:
-        return _finding(
-            trap,
-            label="GHOST",
-            severity=PreflightSeverity.LOW,
-            note="Few-shot examples carry no comparable input/output text.",
-        )
+    # Input exposure is evidence of leakage risk. A shared output label
+    # (yes/positive/0) alone says nothing about which input was exposed.
+    shot_inputs = {_normalize_example_field(ex.get("input")) for ex in examples if isinstance(ex, dict)}
+    shot_inputs.discard("")
 
     def _hits(dataset: Dataset | None) -> list[str]:
         if dataset is None:
             return []
-        hit_ids: list[str] = []
-        for item in dataset.items:
-            item_texts = {
-                _normalize_example_field(item.input),
-                _normalize_example_field(item.reference),
-            }
-            item_texts.discard("")
-            if item_texts & shot_texts:
-                hit_ids.append(item.id)
-        return hit_ids
+        return [item.id for item in dataset.items
+                if _normalize_example_field(item.input) in shot_inputs]
 
     test_hits = _hits(test_dataset)
     if test_hits:
@@ -889,9 +934,8 @@ def _check_few_shot_leakage(
             severity=PreflightSeverity.HIGH,
             note=(
                 f"{len(test_hits)} held-out test item(s) match a few-shot "
-                f"example baked into every prompt: {sample}{more}. The model "
-                "sees the answer at inference time; the generalisation score "
-                "is inflated by memorisation."
+                f"input in {scope}: {sample}{more}. This is input exposure; "
+                "whether an answer was supplied and used must be checked separately."
             ),
             remediation=(
                 "Remove the overlapping items from the test slice, or draw "
@@ -911,8 +955,8 @@ def _check_few_shot_leakage(
             severity=PreflightSeverity.MEDIUM,
             note=(
                 f"{len(train_hits)} train item(s) match a baked-in few-shot "
-                f"example: {sample}{more}. Training fitness is inflated by "
-                "examples the model was already handed."
+                f"input in {scope}: {sample}{more}. Check the selected execution "
+                "before interpreting training fitness as independent evidence."
             ),
             remediation=(
                 "Draw few-shot examples from a pool disjoint from the train "
@@ -926,7 +970,7 @@ def _check_few_shot_leakage(
         label="GHOST",
         severity=PreflightSeverity.LOW,
         note=(
-            f"None of {len(shot_texts)} few-shot text(s) match any train or "
+            f"None of {len(shot_inputs)} few-shot input(s) match any train or "
             "test item; no leakage path."
         ),
     )
@@ -982,8 +1026,11 @@ def _check_rubric_dead_weight(rubric: JudgeRubric) -> AnalyticalFinding:
     )
 
 
-def _check_no_held_out(has_test_slice: bool) -> AnalyticalFinding:
+def _check_no_held_out(has_test_slice: bool, policy: TrapPolicy = _DEFAULT_POLICY) -> AnalyticalFinding:
     trap = next(t for t in CALIBRATION_TRAPS if t.id == "no_held_out_slice")
+    if not has_test_slice and not policy.fail_on_missing_test:
+        return _finding(trap, label="GHOST", severity=PreflightSeverity.LOW,
+            note="Missing-test check disabled via policy; independent holdout remains unmeasured.")
     if not has_test_slice:
         return _finding(
             trap,
@@ -1016,6 +1063,8 @@ def analytical_preflight(
     variants: PromptVariants,
     judge_output_budget: str = "small",
     policy: TrapPolicy | None = None,
+    validation_mode: Literal["auto", "paired", "disjoint"] = "auto",
+    selected_few_shot_indices: Sequence[int] | None = None,
 ) -> list[AnalyticalFinding]:
     """Run analytical preflight checks and return one finding per trap.
 
@@ -1030,6 +1079,8 @@ def analytical_preflight(
             need to differ from generic defaults — e.g. open-ended writing
             tasks may want a higher ``near_duplicate_jaccard``.
     """
+    if validation_mode not in ("auto", "paired", "disjoint"):
+        raise ValueError("validation_mode must be auto, paired, or disjoint")
     pol = policy or _DEFAULT_POLICY
     findings: list[AnalyticalFinding] = [
         _check_self_agreement(target_provider, target_model, judge_provider, judge_model),
@@ -1042,10 +1093,10 @@ def analytical_preflight(
         _check_rubric_concentration(rubric, policy=pol),
         _check_judge_budget(rubric, judge_output_budget, policy=pol),
         _check_empty_reference(train_dataset, rubric),
-        _check_no_held_out(has_test_slice=test_dataset is not None),
-        _check_dataset_leakage(train_dataset, test_dataset),
+        _check_no_held_out(has_test_slice=test_dataset is not None, policy=pol),
+        _check_dataset_leakage(train_dataset, test_dataset, validation_mode),
         _check_routed_provider(target_provider, judge_provider),
-        _check_few_shot_leakage(variants, train_dataset, test_dataset, policy=pol),
+        _check_few_shot_leakage(variants, train_dataset, test_dataset, policy=pol, selected_few_shot_indices=selected_few_shot_indices),
         _check_rubric_dead_weight(rubric),
     ]
     return findings

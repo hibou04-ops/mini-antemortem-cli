@@ -17,6 +17,7 @@ from mini_antemortem_cli import (
     CALIBRATION_TRAPS,
     analytical_preflight as _analytical_preflight,
 )
+from mini_antemortem_cli.traps import TrapPolicy
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +158,9 @@ def analytical_preflight(
     judge_model: str | None = None,
     test_dataset: str | None = None,
     judge_output_budget: str = "small",
+    validation_mode: str = "auto",
+    selected_few_shot_indices: list[int] | None = None,
+    policy: dict | None = None,
 ) -> list[dict]:
     """Classify the calibration config against the built-in trap patterns.
 
@@ -195,6 +199,9 @@ def analytical_preflight(
         rubric=rubric_obj,
         variants=variants_obj,
         judge_output_budget=judge_output_budget,
+        validation_mode=validation_mode,
+        selected_few_shot_indices=selected_few_shot_indices,
+        policy=TrapPolicy(**policy) if policy is not None else None,
     )
     return [f.model_dump(mode="json") for f in findings]
 

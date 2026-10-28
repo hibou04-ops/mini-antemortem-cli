@@ -554,8 +554,8 @@ def test_overlap_summarizes_to_block_status():
     assert summary["highest_severity"] == "blocker"
 
 
-def test_within_slice_duplicates_stay_medium():
-    # Within-slice dup (not cross-slice overlap) must remain MEDIUM, not BLOCKER.
+def test_within_slice_duplicates_do_not_hide_cross_slice_content_overlap():
+    # Both slices also contain identical input x; distinct ids do not make it independent.
     train = Dataset(items=[DatasetItem(id=i, input="x") for i in ["d", "d", "e"]])
     test = Dataset(items=[DatasetItem(id=i, input="x") for i in ["x", "y", "z"]])
     findings = analytical_preflight(
@@ -569,7 +569,7 @@ def test_within_slice_duplicates_stay_medium():
         variants=_variants(),
     )
     f = _by_trap(findings, "train_test_id_overlap")
-    assert f.severity == PreflightSeverity.MEDIUM
+    assert f.severity == PreflightSeverity.BLOCKER
 
 
 # ---------------------------------------------------------------------------
@@ -625,8 +625,8 @@ def test_few_shot_leakage_into_train_only_is_real_medium():
     assert f.severity == PreflightSeverity.MEDIUM
 
 
-def test_few_shot_leakage_matches_on_reference_text():
-    # Overlap on the item's reference (not just input) also leaks the answer.
+def test_few_shot_shared_reference_label_alone_is_not_input_leakage():
+    # A different input with a common label does not expose this eval input.
     test = Dataset(items=[DatasetItem(id="rleak", input="distinct", reference="42")] + [
         DatasetItem(id=f"v{i}", input=f"eval {i}") for i in range(19)
     ])
@@ -634,7 +634,7 @@ def test_few_shot_leakage_matches_on_reference_text():
         **_kwargs(test_dataset=test, variants=_variants_with_shot("prompt", shot_output="42"))
     )
     f = _by_trap(findings, "few_shot_leakage_into_test")
-    assert f.label == "REAL"
+    assert f.label == "GHOST"
 
 
 def test_few_shot_leakage_ghost_when_disjoint():

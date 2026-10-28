@@ -69,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.update:
-        MANIFEST.write_text("\n".join(expected_manifest_lines()) + "\n", encoding="utf-8")
+        MANIFEST.write_text("\n".join(expected_manifest_lines()) + "\n", encoding="utf-8", newline="\n")
         print(f"updated {MANIFEST.relative_to(ROOT).as_posix()}")
         return 0
 
