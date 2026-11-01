@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """mini-antemortem-cli - analytical preflight for omegaprompt calibration.
 
 Reads the run configuration and classifies eleven calibration-specific
@@ -43,7 +44,7 @@ from mini_antemortem_cli.traps import (
     summarize_findings,
 )
 
-__version__ = "0.11.0"
+__version__ = "0.11.1"
 
 __all__ = [
     "CALIBRATION_TRAPS",

@@ -13,6 +13,12 @@ pip install mini-antemortem-cli
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` (`mini-antemortem-cli[mcp]`)
 
+## v0.11.1 — 이번 변경
+
+`mini_antemortem_cli.traps.CANONICAL_TRAP_CODES`와 `get_canonical_trap_code()`를 추가했습니다. 기존 built-in trap 11개에 `OMG001`–`OMG011`을 명시적으로 고정하며, 미등록 이름은 `KeyError`입니다. 기존 trap 식별자·finding·분류 동작은 보존했습니다.
+
+MCP 1.x/2.x import 경로 호환 shim(`FastMCP` / `MCPServer`)을 포함합니다. 로컬 검증은 SDK 1.30.0으로 수행했으며 2.x runtime은 미검증이고, 선언된 지원 의존성은 `mcp>=1.0.0,<2.0.0`을 유지합니다.
+
 ## 시작 · 단독 사용 · 도킹
 
 **Omega Verification Suite** — Quiet precision. AI research guided by evidence.
@@ -22,14 +28,14 @@ Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · 
 Python 3.11 이상에서 실행합니다. 설치에는 인터넷이 필요합니다.
 
 ```bash
-python -m pip install mini-antemortem-cli==0.11.0
+python -m pip install mini-antemortem-cli==0.11.1
 mini-antemortem-cli --version
 mini-antemortem-cli list-traps --json
 ```
 
 list-traps는 내장 규칙을 출력하고 종료 0입니다. 실제 check에는 train/test JSONL·rubric·variants가 필요합니다. 기본 check는 advisory라 심각한 finding도 종료 0일 수 있습니다. --fail-on-severity는 정책 위반을 1, 입력 오류는 2로 처리합니다.
 
-[실제 연결 방식과 입력·출력](https://github.com/hibou04-ops/omega-lock/blob/main/DOCKING.md) · [전체 안내](README.md). 두 mini 도구의 현재 검증 조합은 omegaprompt 2.1.2이며, 별도 배포 패키지입니다.
+[실제 연결 방식과 입력·출력](https://github.com/hibou04-ops/omega-lock/blob/main/DOCKING.md) · [전체 안내](README.md). 두 mini 도구는 별도 배포 패키지이며, 이번 release의 오프라인 검증 조합은 omegaprompt 2.2.3입니다.
 
 MCP는 해당 배포명의 `[mcp]` extras와 기존 서버 명령을 사용합니다. 기존 FastMCP 계약은 SDK `>=1.0.0,<2.0.0` 범위로 유지합니다.
 

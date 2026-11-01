@@ -1,12 +1,21 @@
+# SPDX-License-Identifier: Apache-2.0
 """Analytical preflight tests - trap classifications over a range of configs."""
 
 from __future__ import annotations
+
+import pytest
 
 from omegaprompt.domain.dataset import Dataset, DatasetItem
 from omegaprompt.domain.judge import Dimension, HardGate, JudgeRubric
 from omegaprompt.domain.params import PromptVariants
 from omegaprompt.preflight.contracts import PreflightSeverity
-from mini_antemortem_cli.traps import TrapPolicy, analytical_preflight, analytical_traps
+from mini_antemortem_cli.traps import (
+    CANONICAL_TRAP_CODES,
+    TrapPolicy,
+    analytical_preflight,
+    analytical_traps,
+    get_canonical_trap_code,
+)
 
 
 def _rubric(dim_weights=None, gates=1) -> JudgeRubric:
@@ -690,3 +699,43 @@ def test_rubric_dead_weight_ghost_for_single_dimension():
     findings = analytical_preflight(**_kwargs(rubric=_rubric(dim_weights={"accuracy": 1.0})))
     f = _by_trap(findings, "rubric_dead_weight_dimension")
     assert f.label == "GHOST"
+
+
+@pytest.mark.parametrize(
+    ("trap_name", "expected_code"),
+    [
+        ("self_agreement_bias", "OMG001"),
+        ("small_sample_kc4_power", "OMG002"),
+        ("variants_homogeneous", "OMG003"),
+        ("rubric_weight_concentration", "OMG004"),
+        ("judge_budget_too_small", "OMG005"),
+        ("empty_reference_with_strict_rubric", "OMG006"),
+        ("no_held_out_slice", "OMG007"),
+        ("train_test_id_overlap", "OMG008"),
+        ("routed_provider_opaque_family", "OMG009"),
+        ("few_shot_leakage_into_test", "OMG010"),
+        ("rubric_dead_weight_dimension", "OMG011"),
+    ],
+)
+def test_canonical_trap_code_is_stable(trap_name, expected_code):
+    assert get_canonical_trap_code(trap_name) == expected_code
+    for other_name in reversed(tuple(CANONICAL_TRAP_CODES)):
+        get_canonical_trap_code(other_name)
+    assert get_canonical_trap_code(trap_name) == expected_code
+
+
+def test_canonical_trap_codes_cover_registry_with_unique_codes():
+    assert set(CANONICAL_TRAP_CODES) == {trap.id for trap in analytical_traps()}
+    assert len(CANONICAL_TRAP_CODES) == 11
+    assert set(CANONICAL_TRAP_CODES.values()) == {
+        f"OMG{number:03d}" for number in range(1, 12)
+    }
+
+
+@pytest.mark.parametrize("trap_name", ["unknown_trap", "", "Self_Agreement_Bias"])
+def test_canonical_trap_code_rejects_unknown_name(trap_name):
+    before = CANONICAL_TRAP_CODES.copy()
+    with pytest.raises(KeyError) as exc_info:
+        get_canonical_trap_code(trap_name)
+    assert exc_info.value.args == (trap_name,)
+    assert CANONICAL_TRAP_CODES == before

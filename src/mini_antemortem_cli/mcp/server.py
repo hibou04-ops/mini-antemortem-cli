@@ -11,7 +11,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ModuleNotFoundError:
+    from mcp.server import MCPServer as FastMCP  # type: ignore[no-redef,attr-defined]
 
 from mini_antemortem_cli import (
     CALIBRATION_TRAPS,

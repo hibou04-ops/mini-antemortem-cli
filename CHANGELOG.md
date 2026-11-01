@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.11.1] - 2026-11-01
+
+Adds `mini_antemortem_cli.traps.CANONICAL_TRAP_CODES` and `get_canonical_trap_code()`: the 11 built-in trap identifiers have explicit stable codes `OMG001` through `OMG011`. Unknown names raise `KeyError`. The existing trap identifiers, findings, and classifier behavior are preserved.
+
+Includes an MCP 1.x/2.x import-layout compatibility shim (`FastMCP` / `MCPServer`). Local verification used SDK 1.30.0; SDK 2.x runtime behavior is not verified, and the declared supported dependency remains `mcp>=1.0.0,<2.0.0`.
+
 ## 0.11.0 - 2026-10-28
 
 few-shot 공유 출력 라벨·대소문자 식별자의 오탐을 교정하고 후보 pool과 실제 선택의 입력 노출을 구분합니다. 정책의 타입·범위·미지 키를 검증하고 missing-test 정책을 적용합니다. paired 재측정은 ID와 내용을 함께 확인합니다. 정확한 Jaccard 최대값이 확정되면 중복 비교를 종료하며 Windows fixture 재생성은 LF로 고정합니다.

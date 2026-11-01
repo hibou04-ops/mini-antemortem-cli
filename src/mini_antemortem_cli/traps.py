@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Analytical preflight (mini-antemortem adapter).
 
 Reads the run configuration and emits classifications over a fixed set
@@ -332,6 +333,26 @@ CALIBRATION_TRAPS: tuple[TrapPattern, ...] = (
         ),
     ),
 )
+
+
+CANONICAL_TRAP_CODES: dict[str, str] = {
+    "self_agreement_bias": "OMG001",
+    "small_sample_kc4_power": "OMG002",
+    "variants_homogeneous": "OMG003",
+    "rubric_weight_concentration": "OMG004",
+    "judge_budget_too_small": "OMG005",
+    "empty_reference_with_strict_rubric": "OMG006",
+    "no_held_out_slice": "OMG007",
+    "train_test_id_overlap": "OMG008",
+    "routed_provider_opaque_family": "OMG009",
+    "few_shot_leakage_into_test": "OMG010",
+    "rubric_dead_weight_dimension": "OMG011",
+}
+
+
+def get_canonical_trap_code(trap_name: str) -> str:
+    """Return a built-in trap's stable code; raise KeyError for unknown names."""
+    return CANONICAL_TRAP_CODES[trap_name]
 
 
 def analytical_traps() -> tuple[TrapPattern, ...]:
