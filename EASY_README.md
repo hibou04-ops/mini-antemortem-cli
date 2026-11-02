@@ -1,139 +1,55 @@
-# mini-antemortem-cli - Easy Start
+# mini-antemortem-cli — Easy Start
 
-Short version of [README.md](README.md). Korean easy version: [EASY_README_KR.md](EASY_README_KR.md). Korean main README: [README_KR.md](README_KR.md).
+[English](README.md) · [한국어](README.ko.md) · [English easy](EASY_README.md) · [한국어 easy](EASY_README_KR.md)
 
-## v0.11.1 — Release changes
-
-Adds `mini_antemortem_cli.traps.CANONICAL_TRAP_CODES` and `get_canonical_trap_code()`: the 11 built-in trap identifiers have explicit stable codes `OMG001` through `OMG011`. Unknown names raise `KeyError`. The existing trap identifiers, findings, and classifier behavior are preserved.
-
-Includes an MCP 1.x/2.x import-layout compatibility shim (`FastMCP` / `MCPServer`). Local verification used SDK 1.30.0; SDK 2.x runtime behavior is not verified, and the declared supported dependency remains `mcp>=1.0.0,<2.0.0`.
-
-## Start here · Standalone use · Integration/Docking
-
-**Omega Verification Suite** — Quiet precision. AI research guided by evidence.
-
-Lint calibration config for deterministic structural traps without calling a model, then optionally pass its findings to the omegaprompt adaptation plan.
-
-Requires Python 3.11+. Installation needs internet.
-
-```bash
-python -m pip install mini-antemortem-cli==0.11.1
-mini-antemortem-cli --version
-mini-antemortem-cli list-traps --json
-```
-
-The offline registry prints the built-in trap records and exits 0. For actual config analysis use check with train/test JSONL, rubric and variants JSON; the existing demo fixtures are linked below. Advisory check can exit 0 with serious findings; --fail-on-severity enables the policy gate (exit 1). Bad configuration exits 2.
-
-omegaprompt>=1.1.0 is required and installed automatically; a calibration run is optional. This release was tested offline with omegaprompt 2.2.3. Validate check JSON findings as AnalyticalFinding objects, wrap them in PreflightReport, then derive_adaptation_plan. This is separate from antemortem, which verifies repository citations.
-
-[Docking contracts and runnable data handoff](https://github.com/hibou04-ops/omega-lock/blob/main/DOCKING.md) · [Full guide](README.md).
-
-MCP: install the distribution with `[mcp]` and use its existing server executable. FastMCP support is bounded to MCP SDK `>=1.0.0,<2.0.0`; the tool names and schemas are unchanged.
-
-
-## What Is This?
-
-`mini-antemortem-cli` is a deterministic linter that catches the silent traps in your prompt-eval setup — train/test leakage, judge bias, homogeneous variants — before they fake a passing score. It reads your local `omegaprompt` calibration config inputs, checks 11 built-in trap patterns, and returns `AnalyticalFinding` records. No API keys, no live providers, no network. Works with `omegaprompt`; useful standalone as a config linter.
+A deterministic linter for 11 structural traps in calibration configuration: leakage, judge bias, homogeneous variants and related risks. It emits `AnalyticalFinding` records from local configuration without provider calls or network access.
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
-## What's New in 0.10.0
+## 0.11.2 — Standalone installation and explicit integration
 
-- Two new trap rules — the count is now 11 (was 9): `few_shot_leakage_into_test` (a few-shot example baked into the prompt matches a held-out item) and `rubric_dead_weight_dimension` (a rubric dimension with zero weight that the judge still scores).
-- Claim-drift fix: the trap count is now consistent everywhere (it had said *nine* in one place and *seven* in another); the source of truth is `analytical_traps()` and a consistency check fails the build on drift.
-- Version-agnostic publish workflow: the release tag, `pyproject` version, and `__init__` version must match before a build is published.
+The sole required dependency is `pydantic>=2.6.0`. Necessary types, exceptions and contracts live in the internal `_vendor` namespace, so import and CLI work without omegaprompt, omega-lock, NumPy or provider SDKs. `omegaprompt>=1.1.0` is confined to optional extra `[bridge]`. Local and parent models are separate Python classes.
 
-## What's New in 0.9.1
-
-- Bad-input error messages are now a single line (schema errors used to span several lines). Exit code is still `2`.
-
-## What's New in 0.9.0
-
-- Text output now leads with one grep-friendly `Summary:` line (native status: PASS / ADVISORY / HOLD / BLOCK / NEEDS_MORE_EVIDENCE).
-- High-signal findings carry the value the trap fired on in a `cite` field (config-referenced).
-- Bad input files report a clean one-line error and exit code `2` (no traceback).
-- `list-traps --json` emits a `{id, hypothesis}` array.
-- Exact train/test ID overlap now fires at `BLOCKER` (was high). `--fail-on-severity high` still catches it.
-- Moves to `4 - Beta`, with an additive-only commitment to the surface going forward.
-
-## Install
+Requires Python 3.11+. This checkout has source version **0.11.2**. The commands below install the checkout. Git tags and PyPI publication are separate; this does not claim the new source version is available on PyPI.
 
 ```bash
-pip install mini-antemortem-cli
-```
-
-For MCP:
-
-```bash
-pip install "mini-antemortem-cli[mcp]"
-mini-antemortem-cli-mcp
-```
-
-## Trap IDs
-
-- `self_agreement_bias`
-- `small_sample_kc4_power`
-- `variants_homogeneous`
-- `rubric_weight_concentration`
-- `judge_budget_too_small`
-- `empty_reference_with_strict_rubric`
-- `no_held_out_slice`
-- `train_test_id_overlap`
-- `routed_provider_opaque_family`
-- `few_shot_leakage_into_test`
-- `rubric_dead_weight_dimension`
-
-The source-backed count and hypotheses are generated here: [docs/generated/claims.md](docs/generated/claims.md).
-
-## Quick CLI Demo
-
-```bash
+python -m pip install .
+mini-antemortem-cli --version
+mini-antemortem-cli list-traps --json
 python examples/demo_replay.py
 ```
 
-Or run the CLI directly:
+The registry command and fixture demo need no API keys. Installation may download dependencies; the checks themselves are offline. CLI `check` can return 0 with serious findings in advisory mode. Specify `--fail-on-severity high` for CI policy: a policy breach returns 1; invalid configuration returns 2.
 
-```bash
-mini-antemortem-cli check \
-  --target-provider openai \
-  --target-model gpt-4o \
-  --judge-provider openai \
-  --judge-model gpt-4o \
-  --train examples/demo_config/train.jsonl \
-  --test examples/demo_config/test.jsonl \
-  --rubric examples/demo_config/rubric.json \
-  --variants examples/demo_config/variants.json \
-  --json
-```
+## Trap registry
 
-## Python API
+Source: `src/mini_antemortem_cli/traps.py`, `analytical_traps()`. Existing IDs and stable codes `OMG001` through `OMG011` remain. `get_canonical_trap_code()` raises `KeyError` for unknown names.
 
-```python
-from mini_antemortem_cli import analytical_preflight, analytical_traps
-```
+| Trap ID | Check |
+|---|---|
+| `self_agreement_bias` | Target and judge share a vendor family or model. |
+| `small_sample_kc4_power` | Held-out sample size is below the configured threshold. |
+| `variants_homogeneous` | Prompt variants have high token-set similarity. |
+| `rubric_weight_concentration` | One rubric dimension dominates the total weight. |
+| `judge_budget_too_small` | The judge output budget is small for the rubric. |
+| `empty_reference_with_strict_rubric` | A reference-dependent rubric has missing references. |
+| `no_held_out_slice` | No test slice is supplied. |
+| `train_test_id_overlap` | Train/test IDs overlap or IDs are duplicated. |
+| `routed_provider_opaque_family` | A routed provider obscures the underlying model family. |
+| `few_shot_leakage_into_test` | Few-shot inputs match evaluation inputs; pool exposure and selected exposure are distinguished. |
+| `rubric_dead_weight_dimension` | A zero-weight dimension is still sent to the judge. |
 
-Use `analytical_preflight(...)` before calibration, then pass the findings into `omegaprompt.preflight.PreflightReport` and `derive_adaptation_plan`.
+Finding states are `REAL`, `GHOST`, `NEW`, `UNRESOLVED`; severities are `blocker`, `high`, `medium`, `low`. Registry or lint success does not establish hold-out generalization, model quality or deployment authorization.
 
-## When To Use It
+## Evidence and documentation
 
-- You want a deterministic sanity check before spending provider calls.
-- You want CI to fail on `--fail-on-severity high`.
-- You want explicit trap IDs you can diff over time.
+- Generated claims: [English](docs/generated/claims.md) / [한국어](docs/generated/claims_kr.md)
+- Trust model: [English](docs/trust_model.md) / [한국어](docs/trust_model_kr.md)
+- Toolkit positioning: [English](docs/toolkit_positioning.md) / [한국어](docs/toolkit_positioning_kr.md)
+- Claim ledger: [English](docs/claim_ledger.md) / [한국어](docs/claim_ledger_kr.md)
+- Examples: [English](docs/examples.md) / [한국어](docs/examples_kr.md)
+- [CLI exit codes](docs/cli_exit_codes.md) · [Release checklist](docs/release_checklist.md) · [Changelog](CHANGELOG.md)
 
-## When To Use Something Else
+[README.ko.md](README.ko.md) is the canonical Korean document; [README_KR.md](README_KR.md) is an identical compatibility copy.
 
-- Use `mini-omega-lock` when you need empirical live/mock provider probes.
-- Use `antemortem-cli` when you need broader source-file recon and disk-verified file:line citations.
-- Use `omegaprompt` for the actual calibration engine.
-
-License: Apache 2.0.
-
-## 0.11.0: 입력 누출·정책·평가 목적을 구분
-
-- 서로 다른 입력의 공통 출력 라벨(`yes`, `positive`, `0`)은 누출로 판정하지 않습니다. 실제 입력 중복과 입력·정답 쌍 중복은 계속 감지합니다. 문자열은 Unicode NFC·공백을 정규화하고 대소문자를 보존합니다. 구조화 값 비교 helper는 타입과 dict key 순서를 다루지만, 현재 공개 `PromptVariants`는 few-shot 값을 문자열로 검증합니다.
-- `selected_few_shot_indices`/CLI `--selected-few-shot-indices`가 없으면 후보 pool의 **잠재 입력 노출**을 검사합니다. 선택 인덱스를 주면 해당 실행의 입력 노출만 검사합니다. 공통 출력만 있거나 의미상 유사한 입력을 분석하는 탐지기는 아닙니다.
-- `TrapPolicy.fail_on_missing_test=False`가 실제로 누락-test trap에 반영됩니다. holdout이 측정됐다는 뜻은 아닙니다. 알 수 없는 정책 키, 잘못된 타입, NaN·Inf, 범위 밖 threshold는 입력 오류입니다. 이전에 무시되던 오타 설정은 수정해야 합니다.
-- API/CLI/MCP `validation_mode`는 `auto`(기본), `paired`, `disjoint`입니다. `paired`이고 ID 집합·입력·reference가 모두 일치할 때만 반복측정 `UNRESOLVED/MEDIUM`으로 구분합니다. 일부 중복·내용 충돌은 계속 `REAL/BLOCKER`입니다. mode 변경은 일반화 성공이나 누출 면제 근거가 아닙니다.
-- 반복 prompt와 token 집합 중복은 정확한 최대 Jaccard가 1로 확정되면 종료합니다. 근사값이나 완화한 threshold를 쓰지 않습니다.
-
-[전후 근거·설정 이행·재현 명령](docs/upgrade-0.11.0.md). CLI 기본 실행은 결과 출력이며, `--fail-on-severity high`를 지정해야 품질 gate가 됩니다. 입력 오류는 2, 지정 gate 차단은 1입니다.
+Apache 2.0. [LICENSE](LICENSE) · [NOTICE](NOTICE).

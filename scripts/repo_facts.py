@@ -1,7 +1,7 @@
 """Static repository facts used by generated docs and release checks.
 
 This module deliberately avoids importing ``mini_antemortem_cli``. Importing
-the package requires runtime dependencies such as ``omegaprompt``; consistency
+the package requires runtime dependencies such as ``pydantic``; consistency
 checks should still run in a minimal no-network environment.
 """
 
@@ -52,6 +52,8 @@ class RepoFacts:
     mcp_command: str
     mcp_module_command: str
     traps: tuple[TrapFact, ...]
+    runtime_dependencies: tuple[str, ...]
+    bridge_dependencies: tuple[str, ...]
 
     @property
     def trap_count(self) -> int:
@@ -167,6 +169,8 @@ def project_facts(root: Path = ROOT) -> RepoFacts:
         mcp_command="mini-antemortem-cli-mcp",
         mcp_module_command=f"python -m {import_package}.mcp",
         traps=parse_trap_patterns(root),
+        runtime_dependencies=tuple(project.get("dependencies", [])),
+        bridge_dependencies=tuple(optional.get("bridge", [])),
     )
 
 

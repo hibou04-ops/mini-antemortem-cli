@@ -22,10 +22,10 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from omegaprompt.domain.dataset import Dataset
-from omegaprompt.domain.judge import JudgeRubric
-from omegaprompt.domain.params import PromptVariants
-from omegaprompt.preflight.contracts import (
+from mini_antemortem_cli._vendor.dataset import Dataset
+from mini_antemortem_cli._vendor.judge import JudgeRubric
+from mini_antemortem_cli._vendor.params import PromptVariants
+from mini_antemortem_cli._vendor.contracts import (
     AnalyticalFinding,
     PreflightSeverity,
 )

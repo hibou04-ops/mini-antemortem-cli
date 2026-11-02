@@ -1,137 +1,55 @@
-# mini-antemortem-cli - 쉬운 설명
+# mini-antemortem-cli — 빠른 시작
 
-[README.md](README.md)의 압축 버전입니다. English easy version: [EASY_README.md](EASY_README.md). 한국어 메인 README: [README_KR.md](README_KR.md).
+[English](README.md) · [한국어](README.ko.md) · [English easy](EASY_README.md) · [한국어 easy](EASY_README_KR.md)
 
-## v0.11.1 — 이번 변경
-
-`mini_antemortem_cli.traps.CANONICAL_TRAP_CODES`와 `get_canonical_trap_code()`를 추가했습니다. 기존 built-in trap 11개에 `OMG001`–`OMG011`을 명시적으로 고정하며, 미등록 이름은 `KeyError`입니다. 기존 trap 식별자·finding·분류 동작은 보존했습니다.
-
-MCP 1.x/2.x import 경로 호환 shim(`FastMCP` / `MCPServer`)을 포함합니다. 로컬 검증은 SDK 1.30.0으로 수행했으며 2.x runtime은 미검증이고, 선언된 지원 의존성은 `mcp>=1.0.0,<2.0.0`을 유지합니다.
-
-## 시작 · 단독 사용 · 도킹
-
-**Omega Verification Suite** — Quiet precision. AI research guided by evidence.
-
-모델 호출 없이 보정 설정의 구조적 함정을 분류합니다. 보정 실행 없이 쓸 수 있지만 omegaprompt 패키지는 필수입니다.
-
-Python 3.11 이상에서 실행합니다. 설치에는 인터넷이 필요합니다.
-
-```bash
-python -m pip install mini-antemortem-cli==0.11.1
-mini-antemortem-cli --version
-mini-antemortem-cli list-traps --json
-```
-
-list-traps는 내장 규칙을 출력하고 종료 0입니다. 실제 check에는 train/test JSONL·rubric·variants가 필요합니다. 기본 check는 advisory라 심각한 finding도 종료 0일 수 있습니다. --fail-on-severity는 정책 위반을 1, 입력 오류는 2로 처리합니다.
-
-[실제 연결 방식과 입력·출력](https://github.com/hibou04-ops/omega-lock/blob/main/DOCKING.md) · [전체 안내](README.md). 두 mini 도구는 별도 배포 패키지이며, 이번 release의 오프라인 검증 조합은 omegaprompt 2.2.3입니다.
-
-MCP는 해당 배포명의 `[mcp]` extras와 기존 서버 명령을 사용합니다. 기존 FastMCP 계약은 SDK `>=1.0.0,<2.0.0` 범위로 유지합니다.
-
-
-## 이게 뭔가요?
-
-`mini-antemortem-cli`는 프롬프트 평가 셋업에 숨은 함정(train/test 누수, judge 편향, 동질적 variant 등)이 가짜 합격 점수를 만들기 전에 잡아내는 결정론적 linter입니다. 로컬 `omegaprompt` calibration config 입력을 읽고, 11개 built-in trap pattern을 검사한 뒤 `AnalyticalFinding`을 반환합니다. API key 없음, live provider 호출 없음, network 없음. `omegaprompt`와 함께 동작하며 단독 config linter로도 유용합니다.
+calibration 설정의 누출, judge 편향, 유사한 variant 등 11개 구조적 함정을 검사하는 결정적 linter입니다. 로컬 설정에서 `AnalyticalFinding`을 만들며 provider 호출이나 네트워크 접근을 하지 않습니다.
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
-## 0.10.0의 새로운 점
+## 0.11.2 — 독립 설치와 명시적 연동
 
-- 새 trap 규칙 2개 — 이제 count는 11개(이전 9개): `few_shot_leakage_into_test`(prompt에 박힌 few-shot example이 held-out 항목과 겹침), `rubric_dead_weight_dimension`(weight 0인데 judge는 여전히 채점하는 rubric dimension).
-- claim-drift 수정: trap count가 이제 모든 곳에서 일관됩니다(한 곳은 *nine*, 다른 곳은 *seven*이었음). source of truth는 `analytical_traps()`이며 consistency check가 drift 시 빌드를 실패시킵니다.
-- 버전 무관 publish 워크플로: release tag, `pyproject` 버전, `__init__` 버전이 일치해야 빌드가 publish됩니다.
+기본 필수 의존성은 `pydantic>=2.6.0` 하나입니다. 필요한 타입·예외·계약은 내부 `_vendor` namespace에 포함하므로 `omegaprompt`, `omega-lock`, NumPy, provider SDK를 설치하지 않아도 import와 CLI가 동작합니다. `omegaprompt>=1.1.0`은 선택 extra `[bridge]`에만 있습니다. 내부 모델과 parent 모델은 별개의 Python 클래스입니다.
 
-## 0.9.1의 새로운 점
-
-- 잘못된 입력 오류 메시지가 이제 한 줄입니다(스키마 오류 시 여러 줄이던 것 수정). 종료 코드는 그대로 `2`.
-
-## 0.9.0의 새로운 점
-
-- 텍스트 출력이 이제 grep 친화적 `Summary:` 한 줄로 시작합니다(native status: PASS / ADVISORY / HOLD / BLOCK / NEEDS_MORE_EVIDENCE).
-- high-signal finding이 발화한 계산값을 `cite` 필드(config-referenced)에 담습니다.
-- 잘못된 입력 파일은 깔끔한 한 줄 오류로 보고하고 종료 코드 `2`로 종료합니다.
-- `list-traps --json`으로 `{id, hypothesis}` 배열을 출력합니다.
-- train/test ID 정확 겹침은 이제 `BLOCKER`로 발화합니다(이전 high). `--fail-on-severity high`는 여전히 이를 잡습니다.
-- `4 - Beta`로 이동, 이후 surface는 additive-only.
-
-## 설치
+Python 3.11+가 필요합니다. 이 checkout의 소스 버전은 **0.11.2**입니다. 아래 명령은 checkout을 설치합니다. Git 태그와 PyPI 배포는 별도이며, 새 소스 버전이 PyPI에 게시됐다는 뜻은 아닙니다.
 
 ```bash
-pip install mini-antemortem-cli
-```
-
-MCP 사용:
-
-```bash
-pip install "mini-antemortem-cli[mcp]"
-mini-antemortem-cli-mcp
-```
-
-## Trap IDs
-
-- `self_agreement_bias`
-- `small_sample_kc4_power`
-- `variants_homogeneous`
-- `rubric_weight_concentration`
-- `judge_budget_too_small`
-- `empty_reference_with_strict_rubric`
-- `no_held_out_slice`
-- `train_test_id_overlap`
-- `routed_provider_opaque_family`
-- `few_shot_leakage_into_test`
-- `rubric_dead_weight_dimension`
-
-소스 기반 count와 hypothesis는 여기에서 생성됩니다: [docs/generated/claims_kr.md](docs/generated/claims_kr.md).
-
-## 빠른 CLI 데모
-
-```bash
+python -m pip install .
+mini-antemortem-cli --version
+mini-antemortem-cli list-traps --json
 python examples/demo_replay.py
 ```
 
-직접 CLI 실행:
+registry 명령과 fixture 데모는 API 키 없이 실행됩니다. 설치 시 의존성을 내려받을 수 있지만 검사 자체는 오프라인입니다. CLI `check`는 advisory 모드에서 심각한 finding이 있어도 0을 반환할 수 있습니다. CI 정책에는 `--fail-on-severity high`를 명시하세요: 해당 정책 위반은 1, 잘못된 설정은 2입니다.
 
-```bash
-mini-antemortem-cli check \
-  --target-provider openai \
-  --target-model gpt-4o \
-  --judge-provider openai \
-  --judge-model gpt-4o \
-  --train examples/demo_config/train.jsonl \
-  --test examples/demo_config/test.jsonl \
-  --rubric examples/demo_config/rubric.json \
-  --variants examples/demo_config/variants.json \
-  --json
-```
+## 함정 registry
 
-## Python API
+소스: `src/mini_antemortem_cli/traps.py`, `analytical_traps()`. 기존 ID와 안정 코드 `OMG001`~`OMG011`을 유지합니다. `get_canonical_trap_code()`는 알 수 없는 이름에 `KeyError`를 발생시킵니다.
 
-```python
-from mini_antemortem_cli import analytical_preflight, analytical_traps
-```
+| Trap ID | 검사 내용 |
+|---|---|
+| `self_agreement_bias` | target과 judge의 vendor family 또는 모델이 같습니다. |
+| `small_sample_kc4_power` | hold-out 표본 수가 설정된 임계값보다 작습니다. |
+| `variants_homogeneous` | prompt variant의 token 집합 유사도가 높습니다. |
+| `rubric_weight_concentration` | 한 rubric 차원의 가중치가 전체를 지배합니다. |
+| `judge_budget_too_small` | rubric에 비해 judge 출력 예산이 작습니다. |
+| `empty_reference_with_strict_rubric` | reference가 필요한 rubric에 reference가 빠져 있습니다. |
+| `no_held_out_slice` | test slice가 제공되지 않았습니다. |
+| `train_test_id_overlap` | train/test ID가 겹치거나 ID가 중복됩니다. |
+| `routed_provider_opaque_family` | routed provider의 실제 모델 family를 알 수 없습니다. |
+| `few_shot_leakage_into_test` | few-shot 입력이 평가 입력과 겹칩니다. 후보 pool 노출과 선택된 입력 노출을 구분합니다. |
+| `rubric_dead_weight_dimension` | 가중치가 0인 차원도 judge에 전달됩니다. |
 
-Calibration 전에 `analytical_preflight(...)`를 실행하고, 결과를 `omegaprompt.preflight.PreflightReport`와 `derive_adaptation_plan`에 넘기면 됩니다.
+finding 상태는 `REAL`, `GHOST`, `NEW`, `UNRESOLVED`이며 심각도는 `blocker`, `high`, `medium`, `low`입니다. 정상 registry나 lint 결과는 hold-out 일반화·모델 품질·배포 승인을 입증하지 않습니다.
 
-## 쓸 때
+## 근거와 문서
 
-- Provider call 비용을 쓰기 전에 deterministic sanity check가 필요할 때.
-- CI에서 `--fail-on-severity high`로 구조적 위험을 막고 싶을 때.
-- 시간에 따라 diff 가능한 explicit trap ID가 필요할 때.
+- Generated claims: [English](docs/generated/claims.md) / [한국어](docs/generated/claims_kr.md)
+- Trust model: [English](docs/trust_model.md) / [한국어](docs/trust_model_kr.md)
+- Toolkit positioning: [English](docs/toolkit_positioning.md) / [한국어](docs/toolkit_positioning_kr.md)
+- Claim ledger: [English](docs/claim_ledger.md) / [한국어](docs/claim_ledger_kr.md)
+- Examples: [English](docs/examples.md) / [한국어](docs/examples_kr.md)
+- [CLI exit codes](docs/cli_exit_codes.md) · [Release checklist](docs/release_checklist.md) · [Changelog](CHANGELOG.md)
 
-## 다른 도구를 쓸 때
+한국어 canonical 문서는 [README.ko.md](README.ko.md)이며 [README_KR.md](README_KR.md)는 같은 본문의 호환 사본입니다.
 
-- Live/mock provider probe가 필요하면 `mini-omega-lock`.
-- Source-file recon과 disk-verified file:line citation이 필요하면 `antemortem-cli`.
-- 실제 calibration engine은 `omegaprompt`.
-
-License: Apache 2.0.
-
-## 0.11.0: 입력 누출·정책·평가 목적을 구분
-
-- 서로 다른 입력의 공통 출력 라벨(`yes`, `positive`, `0`)은 누출로 판정하지 않습니다. 실제 입력 중복과 입력·정답 쌍 중복은 계속 감지합니다. 문자열은 Unicode NFC·공백을 정규화하고 대소문자를 보존합니다. 구조화 값 비교 helper는 타입과 dict key 순서를 다루지만, 현재 공개 `PromptVariants`는 few-shot 값을 문자열로 검증합니다.
-- `selected_few_shot_indices`/CLI `--selected-few-shot-indices`가 없으면 후보 pool의 **잠재 입력 노출**을 검사합니다. 선택 인덱스를 주면 해당 실행의 입력 노출만 검사합니다. 공통 출력만 있거나 의미상 유사한 입력을 분석하는 탐지기는 아닙니다.
-- `TrapPolicy.fail_on_missing_test=False`가 실제로 누락-test trap에 반영됩니다. holdout이 측정됐다는 뜻은 아닙니다. 알 수 없는 정책 키, 잘못된 타입, NaN·Inf, 범위 밖 threshold는 입력 오류입니다. 이전에 무시되던 오타 설정은 수정해야 합니다.
-- API/CLI/MCP `validation_mode`는 `auto`(기본), `paired`, `disjoint`입니다. `paired`이고 ID 집합·입력·reference가 모두 일치할 때만 반복측정 `UNRESOLVED/MEDIUM`으로 구분합니다. 일부 중복·내용 충돌은 계속 `REAL/BLOCKER`입니다. mode 변경은 일반화 성공이나 누출 면제 근거가 아닙니다.
-- 반복 prompt와 token 집합 중복은 정확한 최대 Jaccard가 1로 확정되면 종료합니다. 근사값이나 완화한 threshold를 쓰지 않습니다.
-
-[전후 근거·설정 이행·재현 명령](docs/upgrade-0.11.0.md). CLI 기본 실행은 결과 출력이며, `--fail-on-severity high`를 지정해야 품질 gate가 됩니다. 입력 오류는 2, 지정 gate 차단은 1입니다.
+Apache 2.0. [LICENSE](LICENSE) · [NOTICE](NOTICE).

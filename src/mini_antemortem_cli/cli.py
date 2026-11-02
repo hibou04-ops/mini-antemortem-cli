@@ -29,9 +29,8 @@ gate — unless ``--fail-on-severity`` (or the deprecated
 matching finding exits 1. A configuration error (a missing or malformed
 input file) exits 2. See ``docs/cli_exit_codes.md``.
 
-The intent is to keep this CLI dependency-light (stdlib argparse +
-pydantic, both already required by ``omegaprompt``) so it runs anywhere
-``omegaprompt`` already runs — no extra installs.
+The CLI uses stdlib argparse and Pydantic with local input contracts.
+It runs without installing the optional ``omegaprompt`` calibration engine.
 """
 
 from __future__ import annotations
@@ -44,10 +43,10 @@ from typing import Sequence
 
 from pydantic import ValidationError
 
-from omegaprompt.domain.dataset import Dataset
-from omegaprompt.domain.judge import JudgeRubric
-from omegaprompt.domain.params import PromptVariants
-from omegaprompt.preflight.contracts import AnalyticalFinding, PreflightSeverity
+from mini_antemortem_cli._vendor.dataset import Dataset
+from mini_antemortem_cli._vendor.judge import JudgeRubric
+from mini_antemortem_cli._vendor.params import PromptVariants
+from mini_antemortem_cli._vendor.contracts import AnalyticalFinding, PreflightSeverity
 
 from mini_antemortem_cli import __version__
 from mini_antemortem_cli.traps import (
@@ -64,7 +63,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description=(
             "Analytical preflight for omegaprompt calibration. "
             f"Classifies {len(analytical_traps())} calibration trap patterns "
-            "deterministically — no API calls, no network."
+            "deterministically - no API calls, no network."
         ),
     )
     parser.add_argument(
@@ -136,7 +135,7 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="LEVEL",
         help=(
             "Exit non-zero when any finding's severity is at least LEVEL. "
-            "Recommended for CI: --fail-on-severity high. Off by default — "
+            "Recommended for CI: --fail-on-severity high. Off by default - "
             "analytical preflight is advisory unless this flag is set."
         ),
     )

@@ -9,3 +9,9 @@ PRE_EXISTING_IP.md in this repository.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 see LICENSE file for the full license text.
+
+Local analytical contracts in src/mini_antemortem_cli/_vendor are adapted
+from the Apache-2.0 omegaprompt public source at commit
+27e23788990a1ea951525a401a1cb6a880e83948 (v2.2.3).
+Their retained source notice, license and modification scope are included
+in that directory. No calibration engine or provider SDK is vendored.

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.2] - 2026-11-02
+
+- Remove the required omegaprompt dependency; retain it only in optional `[bridge]`.
+- Ship the local contract support needed for standalone imports, CLI and offline fixtures; preserve vendored attribution.
+- Make parent integration explicit through JSON-boundary conversion.
+- Synchronize English and canonical Korean READMEs; retain the identical legacy Korean copy.
+
 ## [0.11.1] - 2026-11-01
 
 Adds `mini_antemortem_cli.traps.CANONICAL_TRAP_CODES` and `get_canonical_trap_code()`: the 11 built-in trap identifiers have explicit stable codes `OMG001` through `OMG011`. Unknown names raise `KeyError`. The existing trap identifiers, findings, and classifier behavior are preserved.

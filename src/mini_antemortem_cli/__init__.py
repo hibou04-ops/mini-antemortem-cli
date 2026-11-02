@@ -4,8 +4,8 @@
 Reads the run configuration and classifies eleven calibration-specific
 trap patterns against deterministic rules. No API calls, no network;
 reasoning is deterministic given the inputs. Emits
-:class:`omegaprompt.preflight.AnalyticalFinding` records that feed
-:func:`omegaprompt.preflight.derive_adaptation_plan`.
+local ``AnalyticalFinding`` records. Their JSON representation can feed
+``omegaprompt.preflight.derive_adaptation_plan`` through the optional bridge.
 
 Covered traps::
 
@@ -25,11 +25,13 @@ Public API::
 
     from mini_antemortem_cli import analytical_preflight, analytical_traps
 
-Separate package; not part of the main ``omegaprompt`` install. Install
-alongside omegaprompt when you want analytical preflight before
-calibration::
+Standalone installation requires Pydantic but no calibration engine::
 
-    pip install omegaprompt mini-antemortem-cli
+    pip install mini-antemortem-cli
+
+For integration with the optional calibration engine::
+
+    pip install "mini-antemortem-cli[bridge]"
 
 Companion to ``mini-omega-lock`` (empirical preflight). Either can be
 used alone; both compose into the same ``PreflightReport``.
@@ -44,7 +46,7 @@ from mini_antemortem_cli.traps import (
     summarize_findings,
 )
 
-__version__ = "0.11.1"
+__version__ = "0.11.2"
 
 __all__ = [
     "CALIBRATION_TRAPS",

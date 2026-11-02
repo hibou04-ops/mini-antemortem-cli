@@ -13,9 +13,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from omegaprompt.domain.dataset import Dataset, DatasetItem
-from omegaprompt.domain.judge import Dimension, HardGate, JudgeRubric
-from omegaprompt.domain.params import PromptVariants
+from mini_antemortem_cli._vendor.dataset import Dataset, DatasetItem
+from mini_antemortem_cli._vendor.judge import Dimension, HardGate, JudgeRubric
+from mini_antemortem_cli._vendor.params import PromptVariants
 
 from mini_antemortem_cli.cli import main
 from mini_antemortem_cli.traps import analytical_traps

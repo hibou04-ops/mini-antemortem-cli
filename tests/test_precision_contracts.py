@@ -3,9 +3,9 @@ import json
 from unittest.mock import patch
 
 import pytest
-from omegaprompt.domain.dataset import Dataset, DatasetItem
-from omegaprompt.domain.judge import Dimension, JudgeRubric
-from omegaprompt.domain.params import PromptVariants
+from mini_antemortem_cli._vendor.dataset import Dataset, DatasetItem
+from mini_antemortem_cli._vendor.judge import Dimension, JudgeRubric
+from mini_antemortem_cli._vendor.params import PromptVariants
 
 from mini_antemortem_cli.traps import (
     TrapPolicy, _max_pairwise_jaccard, _normalize_example_field,

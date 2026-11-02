@@ -41,6 +41,8 @@ These claims are generated from local repository sources: `pyproject.toml`,
 | Install command | `{facts.install_command}` |
 | Python import package | `{facts.import_package}` |
 | Package version | `{facts.version}` |
+| Required dependencies | `{', '.join(facts.runtime_dependencies)}` |
+| Optional bridge dependencies | `{', '.join(facts.bridge_dependencies)}` |
 | CLI command | `{facts.cli_command}` |
 | CLI subcommands | `{', '.join(facts.cli_subcommands)}` |
 | MCP extra | `{facts.mcp_extra}` |
@@ -81,6 +83,8 @@ These claims are generated from local repository sources: `pyproject.toml`,
 | Install command | `{facts.install_command}` |
 | Python import package | `{facts.import_package}` |
 | Package version | `{facts.version}` |
+| 필수 의존성 | `{', '.join(facts.runtime_dependencies)}` |
+| 선택 bridge 의존성 | `{', '.join(facts.bridge_dependencies)}` |
 | CLI command | `{facts.cli_command}` |
 | CLI subcommands | `{', '.join(facts.cli_subcommands)}` |
 | MCP extra | `{facts.mcp_extra}` |

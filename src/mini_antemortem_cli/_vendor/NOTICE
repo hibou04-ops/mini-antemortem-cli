@@ -1,0 +1,20 @@
+omegaprompt
+Copyright 2026 Kyunghoon Gwak (곽경훈)
+
+This product includes software developed by Kyunghoon Gwak (곽경훈),
+operating under the GitHub handle @hibou04-ops.
+
+For author binding and pre-existing IP declaration, see AUTHORS.md and
+PRE_EXISTING_IP.md in this repository.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+see LICENSE file for the full license text.
+
+Vendoring provenance and modifications
+Source: https://github.com/hibou04-ops/omegaprompt
+Commit: 27e23788990a1ea951525a401a1cb6a880e83948 (v2.2.3)
+Files: src/omegaprompt/domain/{dataset,judge,params,enums}.py;
+       src/omegaprompt/preflight/contracts.py.
+Only the analytical input/finding contracts are retained. Unused classes,
+functions and imports are omitted; retained validation and JSON fields are
+unchanged. Imports point to this package rather than the calibration engine.

@@ -32,6 +32,7 @@ REQUIRED_README_LINKS = (
 
 PUBLIC_DOCS = (
     "README.md",
+    "README.ko.md",
     "README_KR.md",
     "EASY_README.md",
     "EASY_README_KR.md",
@@ -66,6 +67,13 @@ def run_checks(root: Path = ROOT) -> list[str]:
 
     if parse_init_version(root) != facts.version:
         errors.append("__init__.__version__ does not match pyproject.toml")
+
+    canonical_ko = root / "README.ko.md"
+    legacy_ko = root / "README_KR.md"
+    if not canonical_ko.exists():
+        errors.append("canonical Korean README missing: README.ko.md")
+    elif canonical_ko.read_bytes() != legacy_ko.read_bytes():
+        errors.append("README_KR.md must match canonical README.ko.md")
 
     for rel, expected in build_claim_docs(facts).items():
         path = root / rel

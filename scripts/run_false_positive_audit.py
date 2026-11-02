@@ -25,9 +25,9 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from mini_antemortem_cli.traps import analytical_preflight  # noqa: E402
-from omegaprompt.domain.dataset import Dataset, DatasetItem  # noqa: E402
-from omegaprompt.domain.judge import Dimension, HardGate, JudgeRubric  # noqa: E402
-from omegaprompt.domain.params import PromptVariants  # noqa: E402
+from mini_antemortem_cli._vendor.dataset import Dataset, DatasetItem  # noqa: E402
+from mini_antemortem_cli._vendor.judge import Dimension, HardGate, JudgeRubric  # noqa: E402
+from mini_antemortem_cli._vendor.params import PromptVariants  # noqa: E402
 
 
 MANIFEST = ROOT / "benchmarks" / "false_positive" / "benign_cases.json"

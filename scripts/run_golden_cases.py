@@ -18,9 +18,9 @@ if str(SRC) not in sys.path:
 
 from mini_antemortem_cli.cli import main as cli_main  # noqa: E402
 from mini_antemortem_cli.traps import TrapPolicy, analytical_preflight, analytical_traps  # noqa: E402
-from omegaprompt.domain.dataset import Dataset, DatasetItem  # noqa: E402
-from omegaprompt.domain.judge import Dimension, HardGate, JudgeRubric  # noqa: E402
-from omegaprompt.domain.params import PromptVariants  # noqa: E402
+from mini_antemortem_cli._vendor.dataset import Dataset, DatasetItem  # noqa: E402
+from mini_antemortem_cli._vendor.judge import Dimension, HardGate, JudgeRubric  # noqa: E402
+from mini_antemortem_cli._vendor.params import PromptVariants  # noqa: E402
 
 
 EXPECTED = ROOT / "benchmarks" / "golden_cases" / "expected_cases.json"

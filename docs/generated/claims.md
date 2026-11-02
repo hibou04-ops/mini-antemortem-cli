@@ -10,7 +10,9 @@ These claims are generated from local repository sources: `pyproject.toml`,
 | PyPI distribution | `mini-antemortem-cli` |
 | Install command | `pip install mini-antemortem-cli` |
 | Python import package | `mini_antemortem_cli` |
-| Package version | `0.11.1` |
+| Package version | `0.11.2` |
+| Required dependencies | `pydantic>=2.6.0` |
+| Optional bridge dependencies | `omegaprompt>=1.1.0` |
 | CLI command | `mini-antemortem-cli` |
 | CLI subcommands | `check, list-traps` |
 | MCP extra | `mcp` |

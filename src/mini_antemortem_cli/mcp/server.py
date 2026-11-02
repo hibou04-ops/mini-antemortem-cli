@@ -11,6 +11,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from pydantic import BaseModel
+
 try:
     from mcp.server.fastmcp import FastMCP
 except ModuleNotFoundError:
@@ -96,10 +98,14 @@ def _resolve_dataset(d):
     list[dict] support means the agent can run a preflight on a synthetic
     probe dataset without round-tripping through the filesystem.
     """
-    from omegaprompt.domain import Dataset, DatasetItem
+    from mini_antemortem_cli._vendor import Dataset, DatasetItem
 
     if isinstance(d, Dataset):
         return d
+    if isinstance(d, BaseModel):
+        # A compatible model from an optional engine has a distinct class
+        # identity. Validate its wire fields without importing that engine.
+        return Dataset.model_validate(d.model_dump(mode="json"))
     if isinstance(d, list):
         # Inline list of items — each item is a DatasetItem-shaped dict.
         # No filesystem access; no workspace check needed.
@@ -116,10 +122,12 @@ def _resolve_dataset(d):
 
 
 def _resolve_rubric(r):
-    from omegaprompt.domain import JudgeRubric
+    from mini_antemortem_cli._vendor import JudgeRubric
 
     if isinstance(r, JudgeRubric):
         return r
+    if isinstance(r, BaseModel):
+        return JudgeRubric.model_validate(r.model_dump(mode="json"))
     if isinstance(r, dict):
         # Inline dict — no filesystem access.
         return JudgeRubric.model_validate(r)
@@ -130,10 +138,12 @@ def _resolve_rubric(r):
 
 
 def _resolve_variants(v):
-    from omegaprompt.domain import PromptVariants
+    from mini_antemortem_cli._vendor import PromptVariants
 
     if isinstance(v, PromptVariants):
         return v
+    if isinstance(v, BaseModel):
+        return PromptVariants.model_validate(v.model_dump(mode="json"))
     if isinstance(v, dict):
         # Inline dict — no filesystem access.
         return PromptVariants.model_validate(v)
