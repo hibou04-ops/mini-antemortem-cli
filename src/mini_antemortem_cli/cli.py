@@ -49,6 +49,7 @@ from mini_antemortem_cli._vendor.params import PromptVariants
 from mini_antemortem_cli._vendor.contracts import AnalyticalFinding, PreflightSeverity
 
 from mini_antemortem_cli import __version__
+from mini_antemortem_cli._console import write_console
 from mini_antemortem_cli.traps import (
     TrapPolicy,
     analytical_preflight,
@@ -317,7 +318,7 @@ def _run_check(args: argparse.Namespace) -> int:
             else None
         )
     except _InputLoadError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        write_console(f"error: {exc}\n", stream=sys.stderr)
         return _CONFIG_ERROR_EXIT
 
     try:
@@ -336,13 +337,13 @@ def _run_check(args: argparse.Namespace) -> int:
             selected_few_shot_indices=args.selected_few_shot_indices,
         )
     except ValueError as exc:
-        print(f"error: configuration: {exc}", file=sys.stderr)
+        write_console(f"error: configuration: {exc}\n", stream=sys.stderr)
         return _CONFIG_ERROR_EXIT
 
     if args.json:
-        print(_format_json(findings))
+        write_console(_format_json(findings) + "\n", structured="json")
     else:
-        print(_format_text(findings))
+        write_console(_format_text(findings) + "\n")
 
     # Resolve gate. New flags win over the deprecated --fail-on-blocker.
     min_severity: str | None = args.fail_on_severity
@@ -363,18 +364,16 @@ def _run_list_traps(args: argparse.Namespace) -> int:
         # H1 (0.9.0): machine-readable registry for agent/CI consumers.
         # Text stays the default so the golden cli_list_traps.ids case
         # (which parses text line-by-line) is unaffected.
-        print(
+        write_console(
             json.dumps(
                 [{"id": trap.id, "hypothesis": trap.hypothesis} for trap in analytical_traps()],
                 indent=2,
                 ensure_ascii=False,
-            )
+            ) + "\n", structured="json",
         )
         return 0
     for trap in analytical_traps():
-        print(f"{trap.id}")
-        print(f"  {trap.hypothesis}")
-        print()
+        write_console(f"{trap.id}\n  {trap.hypothesis}\n\n")
     return 0
 
 

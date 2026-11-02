@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -42,8 +43,12 @@ def _venv_script(venv: Path, name: str) -> Path:
     return venv / "bin" / name
 
 
-def _run(cmd: list[str], *, cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+def _run(cmd: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
+    environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
+    environment["PYTHONUTF8"] = "1"
+    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
+                          encoding="utf-8", env=environment)
 
 
 def _fail(message: str, result: subprocess.CompletedProcess[str] | None = None) -> int:
@@ -55,22 +60,31 @@ def _fail(message: str, result: subprocess.CompletedProcess[str] | None = None) 
 
 
 def smoke_wheel(wheel: Path) -> int:
+    wheel = wheel.resolve()
     if not wheel.exists():
         return _fail(f"TOOLING_MISSING: wheel not found: {wheel}")
 
     temp_root = Path(tempfile.mkdtemp(prefix="mini-antemortem-wheel-"))
     try:
         venv = temp_root / "venv"
-        result = _run([sys.executable, "-m", "venv", "--system-site-packages", str(venv)])
+        result = _run([sys.executable, "-m", "venv", str(venv)], cwd=temp_root)
         if result.returncode != 0:
             return _fail("TOOLING_MISSING: failed to create venv", result)
 
         py = _venv_python(venv)
-        result = _run([str(py), "-m", "pip", "install", "--no-deps", str(wheel)])
+        result = _run([str(py), "-m", "pip", "install", "--disable-pip-version-check", str(wheel)], cwd=temp_root)
         if result.returncode != 0:
             return _fail("TOOLING_MISSING: failed to install wheel with pip", result)
 
-        result = _run([str(py), "-c", "import mini_antemortem_cli; print(mini_antemortem_cli.__version__)"])
+        code = (
+            "from pathlib import Path; import importlib.util, sys; "
+            "import mini_antemortem_cli as m; "
+            "assert Path(m.__file__).resolve().is_relative_to(Path(sys.prefix).resolve()); "
+            "assert all(importlib.util.find_spec(n) is None for n in "
+            "('omegaprompt', 'omega_lock', 'numpy', 'openai', 'anthropic')); "
+            "print('installed wheel:', m.__file__); print('version:', m.__version__)"
+        )
+        result = _run([str(py), "-c", code], cwd=temp_root)
         if result.returncode != 0:
             return _fail("TOOLING_MISSING: import smoke failed", result)
 
@@ -79,9 +93,21 @@ def smoke_wheel(wheel: Path) -> int:
             return _fail(f"TOOLING_MISSING: console script missing: {cli}")
 
         for args in ([str(cli), "--version"], [str(cli), "list-traps"]):
-            result = _run(list(args))
+            result = _run(list(args), cwd=temp_root)
             if result.returncode != 0:
                 return _fail(f"COMMAND_FAILED: {' '.join(args)}", result)
+
+        cp949_environment = os.environ.copy()
+        cp949_environment.pop("PYTHONPATH", None)
+        cp949_environment.update(PYTHONUTF8="0", PYTHONIOENCODING="cp949")
+        for help_args in (["--help"], ["check", "--help"]):
+            help_result = subprocess.run(
+                [str(cli), *help_args], cwd=temp_root, capture_output=True,
+                env=cp949_environment,
+            )
+            if help_result.returncode != 0:
+                return _fail("COMMAND_FAILED: installed console help failed under cp949")
+            help_result.stdout.decode("ascii")
 
         config = ROOT / "examples" / "demo_config"
         result = _run(
@@ -105,7 +131,7 @@ def smoke_wheel(wheel: Path) -> int:
                 "--variants",
                 str(config / "variants.json"),
                 "--json",
-            ]
+            ], cwd=temp_root,
         )
         if result.returncode != 0:
             return _fail("COMMAND_FAILED: CLI JSON check failed", result)

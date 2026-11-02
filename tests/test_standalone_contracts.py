@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import builtins
+import ast
+import importlib
 import json
 import os
 import subprocess
 import sys
+import sysconfig
 import tomllib
 from pathlib import Path
 
@@ -23,6 +25,16 @@ from mini_antemortem_cli.bridge import BridgeUnavailableError, to_omegaprompt_fi
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_source_has_no_direct_parent_imports_and_tests_do_not_import_examples():
+    for directory, forbidden in [(ROOT / "src", "omegaprompt"), (ROOT / "tests", "examples")]:
+        for path in directory.rglob("*.py"):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                names = ([alias.name for alias in node.names] if isinstance(node, ast.Import)
+                         else [node.module or ""] if isinstance(node, ast.ImportFrom) else [])
+                assert not any(name.split(".")[0] == forbidden for name in names), (path, node.lineno)
 
 
 def test_engine_is_optional_in_distribution_metadata():
@@ -56,7 +68,7 @@ runpy.run_module('mini_antemortem_cli.cli', run_name='__main__')
 
 @pytest.mark.parametrize("args", [["--help"], ["check", "--help"]])
 def test_installed_console_help_works_on_cp949_without_utf8_mode(args):
-    executable = Path(sys.executable).parent / (
+    executable = Path(sysconfig.get_path("scripts")) / (
         "mini-antemortem-cli.exe" if os.name == "nt" else "mini-antemortem-cli"
     )
     environment = os.environ.copy()
@@ -68,6 +80,34 @@ def test_installed_console_help_works_on_cp949_without_utf8_mode(args):
     )
     assert result.returncode == 0, result.stderr
     assert "usage:" in result.stdout
+
+
+def test_real_findings_are_safe_on_strict_cp949_and_json_values_are_preserved(tmp_path):
+    executable = Path(sysconfig.get_path("scripts")) / (
+        "mini-antemortem-cli.exe" if os.name == "nt" else "mini-antemortem-cli"
+    )
+    config = ROOT / "examples" / "demo_config"
+    variants = tmp_path / "variants.json"
+    variants.write_text(json.dumps({"system_prompts": ["same prompt", "same prompt"]}), encoding="utf-8")
+    args = [str(executable), "check", "--target-provider", "openai", "--judge-provider", "openai",
+            "--train", str(config / "train.jsonl"), "--test", str(config / "test.jsonl"),
+            "--rubric", str(config / "rubric.json"), "--variants", str(variants)]
+    environment = os.environ.copy()
+    environment.update(PYTHONUTF8="1", PYTHONIOENCODING="utf-8:strict")
+    baseline = subprocess.run([*args, "--json"], capture_output=True, env=environment, check=False)
+    assert baseline.returncode == 0, baseline.stderr
+    expected = json.loads(baseline.stdout.decode("utf-8"))
+    assert any("—" in (finding.get("remediation") or "") for finding in expected["findings"])
+    environment.update(PYTHONUTF8="0", PYTHONIOENCODING="cp949:strict")
+    for extra in [[], ["--json"]]:
+        result = subprocess.run([*args, *extra], capture_output=True, env=environment, check=False)
+        assert result.returncode == 0, result.stderr.decode("cp949")
+        output = result.stdout.decode("cp949")
+        assert output.isascii()
+        if extra:
+            assert json.loads(output) == expected
+        else:
+            assert " - not just wording." in output
 
 
 def test_dataset_duplicate_ids_and_empty_inputs_keep_validation():
@@ -90,14 +130,14 @@ def test_rubric_and_variants_keep_original_validation():
 
 
 def test_missing_optional_bridge_reports_install_command(monkeypatch):
-    original_import = builtins.__import__
+    original_import = importlib.import_module
 
     def without_engine(name, *args, **kwargs):
         if name == "omegaprompt" or name.startswith("omegaprompt."):
             raise ModuleNotFoundError("No module named 'omegaprompt'", name="omegaprompt")
         return original_import(name, *args, **kwargs)
 
-    monkeypatch.setattr(builtins, "__import__", without_engine)
+    monkeypatch.setattr(importlib, "import_module", without_engine)
     with pytest.raises(BridgeUnavailableError, match=r"mini-antemortem-cli\[bridge\]"):
         to_omegaprompt_findings([])
 

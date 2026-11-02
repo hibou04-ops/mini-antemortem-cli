@@ -33,7 +33,8 @@ def _tooling_hint(cmd: list[str], output: str) -> str:
 
 def _run(cmd: list[str]) -> bool:
     try:
-        result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+        result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                                encoding="utf-8")
     except FileNotFoundError as exc:
         print(f"TOOLING_MISSING: {cmd[0]}: {exc}", file=sys.stderr)
         return False

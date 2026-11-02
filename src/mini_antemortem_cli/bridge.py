@@ -8,6 +8,7 @@ when the caller requests conversion; the standalone classifier never needs it.
 from __future__ import annotations
 
 from collections.abc import Iterable
+import importlib
 from typing import Any
 
 from mini_antemortem_cli._vendor.contracts import AnalyticalFinding
@@ -27,7 +28,9 @@ def to_omegaprompt_findings(
     the calibration engine a required dependency of this classifier.
     """
     try:
-        from omegaprompt.preflight.contracts import AnalyticalFinding as ParentFinding
+        ParentFinding = importlib.import_module(
+            "omegaprompt.preflight.contracts"
+        ).AnalyticalFinding
     except ModuleNotFoundError as exc:
         if exc.name != "omegaprompt":
             raise

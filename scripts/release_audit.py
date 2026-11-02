@@ -26,7 +26,8 @@ def _classify_failure(output: str) -> str:
 
 def run_command(cmd: list[str]) -> tuple[bool, str]:
     try:
-        result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+        result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                                encoding="utf-8")
     except FileNotFoundError as exc:
         return False, f"TOOLING_MISSING: {cmd[0]}: {exc}"
     output = (result.stdout or "") + (result.stderr or "")

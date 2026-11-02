@@ -104,7 +104,8 @@ def test_publish_readiness_fails_closed_when_build_frontend_missing(monkeypatch,
     def fake_commands() -> list[list[str]]:
         return [[sys.executable, "-m", "build"]]
 
-    def fake_run(cmd, cwd, capture_output, text):
+    def fake_run(cmd, cwd, capture_output, text, encoding):
+        assert encoding == "utf-8"
         return subprocess.CompletedProcess(
             cmd,
             returncode=1,
