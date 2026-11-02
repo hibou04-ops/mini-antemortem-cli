@@ -3,7 +3,7 @@
 """FastMCP server wrapping mini-antemortem-cli's analytical preflight classifier.
 
 Deterministic, zero-LLM-cost. Catches the built-in calibration traps
-before a full omegaprompt run is paid for.
+before committing compute resources to a full omegaprompt run.
 """
 
 from __future__ import annotations

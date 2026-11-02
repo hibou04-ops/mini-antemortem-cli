@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.11.4 - 2026-11-03
+
+- Clarify public documentation and examples for general AI/ML verification and software quality engineering.
+- Preserve the verification contracts, SDK interfaces and license notices.
+
 ## [0.11.3] - 2026-11-02
 
 - Add optional real-omegaprompt integration tests for vendored model schemas, JSON roundtrips, Enum values and validation errors.

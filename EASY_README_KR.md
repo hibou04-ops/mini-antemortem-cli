@@ -6,11 +6,11 @@ calibration 설정의 누출, judge 편향, 유사한 variant 등 11개 구조�
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
-## 0.11.3 — 선택 bridge 계약 회귀 검증
+## 0.11.4 — 선택 bridge 계약 회귀 검증
 
 기본 필수 의존성은 `pydantic>=2.6.0` 하나입니다. 필요한 타입·예외·계약은 내부 `_vendor` namespace에 포함하므로 `omegaprompt`, `omega-lock`, NumPy, provider SDK를 설치하지 않아도 import와 CLI가 동작합니다. `omegaprompt>=1.1.0`은 선택 extra `[bridge]`에만 있습니다. 내부 모델과 parent 모델은 별개의 Python 클래스입니다.
 
-Python 3.11+가 필요합니다. 이 checkout의 소스 버전은 **0.11.3**입니다. 아래 명령은 checkout을 설치합니다. GitHub 소스 릴리즈용 변경이며 PyPI 발행은 별도 수동 workflow입니다. 새 버전의 PyPI 게시를 주장하지 않습니다.
+Python 3.11+가 필요합니다. 이 checkout의 소스 버전은 **0.11.4**입니다. 아래 명령은 checkout을 설치합니다. GitHub 소스 릴리즈용 변경이며 PyPI 발행은 별도 수동 workflow입니다. 새 버전의 PyPI 게시를 주장하지 않습니다.
 
 ```bash
 python -m pip install .
