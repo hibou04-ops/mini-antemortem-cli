@@ -9,11 +9,11 @@ calibration 설정의 누출, judge 편향, 유사한 variant 등 11개 구조�
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
-## 0.11.2 — 독립 설치와 명시적 연동
+## 0.11.3 — 선택 bridge 계약 회귀 검증
 
 기본 필수 의존성은 `pydantic>=2.6.0` 하나입니다. 필요한 타입·예외·계약은 내부 `_vendor` namespace에 포함하므로 `omegaprompt`, `omega-lock`, NumPy, provider SDK를 설치하지 않아도 import와 CLI가 동작합니다. `omegaprompt>=1.1.0`은 선택 extra `[bridge]`에만 있습니다. 내부 모델과 parent 모델은 별개의 Python 클래스입니다.
 
-Python 3.11+가 필요합니다. 이 checkout의 소스 버전은 **0.11.2**입니다. 아래 명령은 checkout을 설치합니다. Git 태그와 PyPI 배포는 별도이며, 새 소스 버전이 PyPI에 게시됐다는 뜻은 아닙니다.
+Python 3.11+가 필요합니다. 이 checkout의 소스 버전은 **0.11.3**입니다. 아래 명령은 checkout을 설치합니다. GitHub 소스 릴리즈용 변경이며 PyPI 발행은 별도 수동 workflow입니다. 새 버전의 PyPI 게시를 주장하지 않습니다.
 
 ```bash
 python -m pip install .
@@ -90,6 +90,17 @@ python scripts/verify_fixture_integrity.py
 ```
 
 이 검증은 로컬 계약과 fixture 회귀를 확인합니다. 외부 실전 데이터셋(OOS)의 효과나 모든 설정에 대한 오탐률을 확립하지 않습니다. vendored 코드의 출처와 라이선스는 [NOTICE](NOTICE) 및 `src/mini_antemortem_cli/_vendor/`에 보존합니다.
+
+## 선택 bridge 계약 검증
+
+실제 설치된 `omegaprompt` 모델과 vendored 모델의 필드·검증 schema·Enum 값을 비교하고 JSON을 양방향으로 왕복합니다. 검증 오류의 종류와 위치도 비교합니다. 아래 검사는 live provider를 호출하지 않습니다.
+
+```bash
+python -m pip install ".[dev,mcp,bridge]"
+python -m pytest -m bridge tests/test_bridge_contracts.py
+```
+
+parent 패키지가 없을 때만 이 선택 통합 검사 파일을 건너뜁니다. 설치된 parent의 import나 계약이 깨졌으면 실패합니다. 독립 core 검사는 parent 없이 계속 실행하며 필수 의존성은 늘리지 않았습니다.
 
 ## 근거와 문서
 

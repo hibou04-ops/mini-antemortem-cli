@@ -6,11 +6,11 @@ A deterministic linter for 11 structural traps in calibration configuration: lea
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
-## 0.11.2 — Standalone installation and explicit integration
+## 0.11.3 — Optional bridge contract regression checks
 
 The sole required dependency is `pydantic>=2.6.0`. Necessary types, exceptions and contracts live in the internal `_vendor` namespace, so import and CLI work without omegaprompt, omega-lock, NumPy or provider SDKs. `omegaprompt>=1.1.0` is confined to optional extra `[bridge]`. Local and parent models are separate Python classes.
 
-Requires Python 3.11+. This checkout has source version **0.11.2**. The commands below install the checkout. Git tags and PyPI publication are separate; this does not claim the new source version is available on PyPI.
+Requires Python 3.11+. This checkout has source version **0.11.3**. The commands below install the checkout. These changes target a GitHub source release; PyPI publication uses a separate manual workflow. Publication of the new version on PyPI is not claimed.
 
 ```bash
 python -m pip install .
@@ -40,6 +40,17 @@ Source: `src/mini_antemortem_cli/traps.py`, `analytical_traps()`. Existing IDs a
 | `rubric_dead_weight_dimension` | A zero-weight dimension is still sent to the judge. |
 
 Finding states are `REAL`, `GHOST`, `NEW`, `UNRESOLVED`; severities are `blocker`, `high`, `medium`, `low`. Registry or lint success does not establish hold-out generalization, model quality or deployment authorization.
+
+## Optional bridge contract checks
+
+Tests compare field and validation schemas plus Enum values between vendored models and the actual installed `omegaprompt`, then roundtrip JSON in both directions. Invalid inputs must retain matching error types and locations. These checks make no live provider calls.
+
+```bash
+python -m pip install ".[dev,mcp,bridge]"
+python -m pytest -m bridge tests/test_bridge_contracts.py
+```
+
+Only an absent parent skips this optional integration file. Broken imports or changed contracts in an installed parent fail. Standalone core tests still run without the parent; required dependencies are unchanged.
 
 ## Evidence and documentation
 
