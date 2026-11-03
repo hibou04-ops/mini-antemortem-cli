@@ -6,11 +6,11 @@ A deterministic linter for 11 structural traps in calibration configuration: lea
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
-## 0.11.3 — Optional bridge contract regression checks
+## 0.11.5 — Optional bridge contract regression checks
 
 The sole required dependency is `pydantic>=2.6.0`. Necessary types, exceptions and contracts live in the internal `_vendor` namespace, so import and CLI work without omegaprompt, omega-lock, NumPy or provider SDKs. `omegaprompt>=1.1.0` is confined to optional extra `[bridge]`. Local and parent models are separate Python classes.
 
-Requires Python 3.11+. Package metadata and the release tag target **0.11.3**. The default installation uses PyPI; the optional bridge remains an explicit extra. For development from a checkout, use `python -m pip install -e ".[dev,mcp]"`.
+Requires Python 3.11+. Package metadata and the release tag target **0.11.5**. The default installation uses PyPI; the optional bridge remains an explicit extra. For development from a checkout, use `python -m pip install -e ".[dev,mcp]"`.
 
 ```bash
 pip install mini-antemortem-cli
