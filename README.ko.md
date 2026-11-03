@@ -1,5 +1,23 @@
 # mini-antemortem-cli
 
+<!-- QUICKSTART_DEMO_START -->
+## 10초 시작: 누수 차단 재현
+
+```bash
+pip install mini-antemortem-cli
+uvx mini-antemortem-cli --help
+```
+
+```diff
+$ python -m mini_antemortem_cli.quickstart_demo
+- [FAIL] overlapping train/test IDs: gate exit 1
++ [PASS] disjoint train/test IDs: gate exit 0
++ [PASS] checked 11 local traps per fixture
+```
+
+설치된 패키지에 포함된 합성 fixture 데모입니다. 아래 요약은 실제 CLI의 JSON과 종료 코드를 확인한 뒤 출력됩니다. `check` 자체는 전체 finding을 출력하며, 이 데모는 모델 품질이나 일반화를 측정하지 않습니다.
+<!-- QUICKSTART_DEMO_END -->
+
 [English](README.md) · [한국어](README.ko.md) · [English easy](EASY_README.md) · [한국어 easy](EASY_README_KR.md)
 
 calibration 설정의 누출, judge 편향, 유사한 variant 등 11개 구조적 함정을 검사하는 결정적 linter입니다. 로컬 설정에서 `AnalyticalFinding`을 만들며 provider 호출이나 네트워크 접근을 하지 않습니다.
@@ -9,17 +27,17 @@ calibration 설정의 누출, judge 편향, 유사한 variant 등 11개 구조�
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
-## 0.11.4 — 선택 bridge 계약 회귀 검증
+## 0.11.3 — 선택 bridge 계약 회귀 검증
 
 기본 필수 의존성은 `pydantic>=2.6.0` 하나입니다. 필요한 타입·예외·계약은 내부 `_vendor` namespace에 포함하므로 `omegaprompt`, `omega-lock`, NumPy, provider SDK를 설치하지 않아도 import와 CLI가 동작합니다. `omegaprompt>=1.1.0`은 선택 extra `[bridge]`에만 있습니다. 내부 모델과 parent 모델은 별개의 Python 클래스입니다.
 
-Python 3.11+가 필요합니다. 이 checkout의 소스 버전은 **0.11.4**입니다. 아래 명령은 checkout을 설치합니다. GitHub 소스 릴리즈용 변경이며 PyPI 발행은 별도 수동 workflow입니다. 새 버전의 PyPI 게시를 주장하지 않습니다.
+Python 3.11+가 필요합니다. 패키지 메타데이터와 릴리즈 태그의 대상 버전은 **0.11.3**입니다. 기본 설치 경로는 PyPI이며 bridge는 명시적으로 선택하는 extra입니다. checkout에서 개발하려면 `python -m pip install -e ".[dev,mcp]"`를 사용하세요.
 
 ```bash
-python -m pip install .
+pip install mini-antemortem-cli
 mini-antemortem-cli --version
 mini-antemortem-cli list-traps --json
-python examples/demo_replay.py
+python -m mini_antemortem_cli.quickstart_demo
 ```
 
 registry 명령과 fixture 데모는 API 키 없이 실행됩니다. 설치 시 의존성을 내려받을 수 있지만 검사 자체는 오프라인입니다. CLI `check`는 advisory 모드에서 심각한 finding이 있어도 0을 반환할 수 있습니다. CI 정책에는 `--fail-on-severity high`를 명시하세요: 해당 정책 위반은 1, 잘못된 설정은 2입니다.

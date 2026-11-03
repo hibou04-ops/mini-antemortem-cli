@@ -92,7 +92,11 @@ def smoke_wheel(wheel: Path) -> int:
         if not cli.exists():
             return _fail(f"TOOLING_MISSING: console script missing: {cli}")
 
-        for args in ([str(cli), "--version"], [str(cli), "list-traps"]):
+        for args in (
+            [str(cli), "--version"],
+            [str(cli), "list-traps"],
+            [str(py), "-m", "mini_antemortem_cli.quickstart_demo"],
+        ):
             result = _run(list(args), cwd=temp_root)
             if result.returncode != 0:
                 return _fail(f"COMMAND_FAILED: {' '.join(args)}", result)

@@ -6,17 +6,17 @@ A deterministic linter for 11 structural traps in calibration configuration: lea
 
 Repository: `hibou04-ops/mini-antemortem-cli` · PyPI: `mini-antemortem-cli` · import: `mini_antemortem_cli` · CLI: `mini-antemortem-cli` · MCP: `mini-antemortem-cli-mcp` with `mini-antemortem-cli[mcp]`
 
-## 0.11.4 — Optional bridge contract regression checks
+## 0.11.3 — Optional bridge contract regression checks
 
 The sole required dependency is `pydantic>=2.6.0`. Necessary types, exceptions and contracts live in the internal `_vendor` namespace, so import and CLI work without omegaprompt, omega-lock, NumPy or provider SDKs. `omegaprompt>=1.1.0` is confined to optional extra `[bridge]`. Local and parent models are separate Python classes.
 
-Requires Python 3.11+. This checkout has source version **0.11.4**. The commands below install the checkout. These changes target a GitHub source release; PyPI publication uses a separate manual workflow. Publication of the new version on PyPI is not claimed.
+Requires Python 3.11+. Package metadata and the release tag target **0.11.3**. The default installation uses PyPI; the optional bridge remains an explicit extra. For development from a checkout, use `python -m pip install -e ".[dev,mcp]"`.
 
 ```bash
-python -m pip install .
+pip install mini-antemortem-cli
 mini-antemortem-cli --version
 mini-antemortem-cli list-traps --json
-python examples/demo_replay.py
+python -m mini_antemortem_cli.quickstart_demo
 ```
 
 The registry command and fixture demo need no API keys. Installation may download dependencies; the checks themselves are offline. CLI `check` can return 0 with serious findings in advisory mode. Specify `--fail-on-severity high` for CI policy: a policy breach returns 1; invalid configuration returns 2.

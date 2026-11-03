@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  PYTHONUTF8: "1"
+
 jobs:
   verify-build:
     name: verify and build
@@ -96,6 +99,9 @@ jobs:
 
       - name: Publish readiness gate
         run: python scripts/publish_readiness.py --no-network
+
+      - name: Check final distribution metadata
+        run: python -m twine check dist/*
 
       - uses: actions/upload-artifact@v4
         with:

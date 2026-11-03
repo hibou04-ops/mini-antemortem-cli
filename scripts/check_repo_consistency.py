@@ -75,6 +75,27 @@ def run_checks(root: Path = ROOT) -> list[str]:
     elif canonical_ko.read_bytes() != legacy_ko.read_bytes():
         errors.append("README_KR.md must match canonical README.ko.md")
 
+    for rel in ("README.md", "README.ko.md", "README_KR.md"):
+        text = _read(root, rel)
+        start = "<!-- QUICKSTART_DEMO_START -->"
+        end = "<!-- QUICKSTART_DEMO_END -->"
+        if text.count(start) != 1 or text.count(end) != 1 or text.index(start) > text.index(end):
+            errors.append(f"{rel} must contain one ordered quickstart demo block")
+            continue
+        quickstart = text.split(start, 1)[1].split(end, 1)[0]
+        for command in (
+            f"pip install {facts.distribution_name}",
+            f"uvx {facts.cli_command} --help",
+            "python -m mini_antemortem_cli.quickstart_demo",
+        ):
+            if command not in quickstart:
+                errors.append(f"{rel} missing quickstart command: {command}")
+        diff = re.search(r"```diff\n(.*?)\n```", quickstart, re.S)
+        if not diff or len(diff.group(1).splitlines()) not in (3, 4):
+            errors.append(f"{rel} quickstart must show a 3-4 line diff demo")
+        elif "[FAIL]" not in diff.group(1) or "[PASS]" not in diff.group(1):
+            errors.append(f"{rel} quickstart must show both failing and healthy fixtures")
+
     for rel, expected in build_claim_docs(facts).items():
         path = root / rel
         if not path.exists():

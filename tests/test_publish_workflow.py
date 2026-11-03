@@ -100,6 +100,14 @@ def test_publish_workflow_runs_full_release_gate_before_publish():
         assert text.index(command) < publish_index
 
 
+def test_publish_workflow_checks_final_artifacts_after_readiness_rebuild():
+    text = _workflow_text()
+    readiness = text.index("python scripts/publish_readiness.py --no-network")
+    metadata_check = text.index("python -m twine check dist/*")
+    upload = text.index("uses: actions/upload-artifact@v4")
+    assert readiness < metadata_check < upload
+
+
 def test_publish_readiness_fails_closed_when_build_frontend_missing(monkeypatch, capsys):
     def fake_commands() -> list[list[str]]:
         return [[sys.executable, "-m", "build"]]

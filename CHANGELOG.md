@@ -1,15 +1,22 @@
 # Changelog
 
-## 0.11.4 - 2026-11-03
+## [0.11.3] - 2026-11-03 - PyPI packaging alignment
+
+- Align distribution and runtime versions with the requested v0.11.3 publication target.
+- Preserve changes from the earlier 0.11.4 source snapshot and the optional bridge regression suite.
+- Add an installed, offline quickstart demo exercising real CLI failure and healthy-control fixtures.
+- Require standard PyPI/uvx quickstarts and check built metadata with twine before publication.
+
+### Retained source snapshot documentation changes
 
 - Clarify public documentation and examples for general AI/ML verification and software quality engineering.
 - Preserve the verification contracts, SDK interfaces and license notices.
 
-## [0.11.3] - 2026-11-02
+### Initial 0.11.3 source snapshot - 2026-11-02
 
 - Add optional real-omegaprompt integration tests for vendored model schemas, JSON roundtrips, Enum values and validation errors.
 - Skip the optional integration file only when the parent package is absent; retain the standalone dependency boundary.
-- Keep 0.11.3 described as GitHub/source-release work, with no advance claim of PyPI publication.
+- The initial snapshot used source-release instructions; the packaging alignment above replaces them with the standard PyPI installation contract.
 
 ## [0.11.2] - 2026-11-02
 

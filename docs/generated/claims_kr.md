@@ -10,7 +10,7 @@
 | PyPI distribution | `mini-antemortem-cli` |
 | Install command | `pip install mini-antemortem-cli` |
 | Python import package | `mini_antemortem_cli` |
-| Package version | `0.11.4` |
+| Package version | `0.11.3` |
 | 필수 의존성 | `pydantic>=2.6.0` |
 | 선택 bridge 의존성 | `omegaprompt>=1.1.0` |
 | CLI command | `mini-antemortem-cli` |
